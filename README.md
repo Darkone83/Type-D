@@ -50,7 +50,7 @@ To compile and run the **Type D Display Firmware**, install these libraries in y
 
 ### First Boot & Setup
 
-1. Flash firmware to your ESP32-S3. Or use the WebFlasher [![Web Flash](https://img.shields.io/badge/Flash%20ESP32%20Firmware-Web%20Installer-blue)](https://YOURUSER.github.io/YOURREPO/webflash.html)
+1. Flash firmware to your ESP32-S3. Or use the WebFlasher [![Web Flash](https://img.shields.io/badge/Flash%20ESP32%20Firmware-Web%20Installer-blue)](https://darkone83.github.io/type-d.github.io/)
 2. Insert SD card with `/boot/`,`/jpg/`, `/gif/`, and `/resources/` folders (optional, can upload later).
 3. Power up. The device will display a boot image (if present), then:
     - If WiFi is not configured, it launches the **WiFiManager captive portal** (“TypeD-Setup”)—connect to this SSID and set up WiFi.
