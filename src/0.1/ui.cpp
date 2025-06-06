@@ -512,11 +512,4 @@ namespace ImageDisplay {
     }
 }
 
-void restartWiFiManager() {
-    WiFiManager wm;
-    wm.resetSettings();        // Forget all credentials
-    delay(1000);
-    ESP.restart();             // Reboot to enter config portal on next boot
-}
-
 } // namespace UI

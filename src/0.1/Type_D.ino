@@ -14,7 +14,6 @@ using fs::FS;
 #include "imagedisplay.h"
 #include "ui.h"
 #include "fileman.h"
-#include "cmd.h"
 
 // --- Globals ---
 TFT_eSPI tft = TFT_eSPI();
@@ -73,22 +72,6 @@ void setup() {
     // --- Start WebServer and register FileMan routes ---
     server.begin();
     FileMan::begin(server);
-
-    server.on("/cmd", HTTP_GET, []() {
-    String codeStr = server.arg("code");
-    String arg = server.hasArg("arg") ? server.arg("arg") : "";
-    if (codeStr == "help") {
-        server.send(200, "text/plain", Cmd::help());
-        return;
-    }
-    if (codeStr.length() < 4) {
-        server.send(400, "text/plain", "Missing/invalid code");
-        return;
-    }
-    uint16_t code = strtol(codeStr.c_str(), nullptr, 16);
-    String result = Cmd::execute(code, arg);
-    server.send(200, "text/plain", result);
-    });
 
     bootStartTime = millis();
     bool bootShown = showBootScreen();

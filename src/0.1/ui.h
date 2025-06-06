@@ -41,10 +41,6 @@ int getBrightness();
 // Set brightness (for boot restore, etc)
 void setBrightness(int percent);
 
-// Ensure these are present for the command API
-void restartWiFiManager();
-void showAbout();
-
 } // namespace UI
 
 #endif

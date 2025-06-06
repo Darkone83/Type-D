@@ -1,7 +1,5 @@
 #include "gallery.h"
 #include <FS.h>
-using namespace fs;
-#include <WiFiManager.h>
 #include <SD_MMC.h>
 #include "imagedisplay.h"
 #include <TJpg_Decoder.h>
@@ -23,18 +21,6 @@ static int _scrollOffset = 0; // For scrolling menu if too many items
 static int _maxVisibleItems = 5;
 
 static bool _imageDisplayed = false;
-
-static int currentIndex = 0;
-static int totalImages = 0;
-static Mode randomMode = Mode::MODE_JPG;
-
-// Helper to get file count for a mode (stub: real code should scan SD for .jpg/.gif)
-int countFiles(Mode mode) {
-    // Replace with your own SD scan if needed
-    if (mode == Mode::MODE_JPG) return 10;  // example
-    if (mode == Mode::MODE_GIF) return 5;   // example
-    return 0;
-}
 
 // Scan directory for images with given extension
 static void scanImages(const char* folder, const char* extension) {
@@ -203,38 +189,6 @@ void update() {
 
 void begin(TFT_eSPI* tft) {
     _tft = tft;
-}
-
-void showImage(int index, Mode mode) {
-    // Replace with your real path logic
-    char path[32];
-    if (mode == Mode::MODE_JPG)
-        snprintf(path, sizeof(path), "/gallery/img%03d.jpg", index);
-    else
-        snprintf(path, sizeof(path), "/gallery/anim%03d.gif", index);
-
-    ImageDisplay::displayImage(path); // Replace with your actual image show code
-}
-
-void nextImage() {
-    currentIndex++;
-    if (currentIndex >= countFiles(randomMode)) currentIndex = 0;
-    showImage(currentIndex, randomMode);
-}
-
-void prevImage() {
-    currentIndex--;
-    if (currentIndex < 0) currentIndex = countFiles(randomMode) - 1;
-    showImage(currentIndex, randomMode);
-}
-
-void startRandomMode(Mode mode) {
-    randomMode = mode;
-    totalImages = countFiles(mode);
-    if (totalImages > 0) {
-        currentIndex = random(0, totalImages);
-        showImage(currentIndex, mode);
-    }
 }
 
 } // namespace Gallery

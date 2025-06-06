@@ -31,6 +31,6 @@
 
 
 // --- Version number ---
-static constexpr char     VERSION_TEXT[]    = "v0.2";
+static constexpr char     VERSION_TEXT[]    = "v0.1";
 
 #endif // DISP_CFG_H
