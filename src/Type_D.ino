@@ -1,3 +1,14 @@
+/////////////////////////
+//    Type D Firmware  //
+//  Code by: Darkone83 //
+// Concept by: Andr0   //
+// Special Thanks to:  //
+//   Team Resurgent    //
+//     XBOX Scene      //
+//  And the modding    //
+//     comminuty       //
+/////////////////////////
+
 #include <FS.h>
 #include <WebServer.h>
 #include <TFT_eSPI.h>
@@ -15,6 +26,8 @@ using fs::FS;
 #include "ui.h"
 #include "fileman.h"
 #include "cmd.h"
+#include "espnow_receiver.h"
+#include "xbox_status.h"
 
 // --- Globals ---
 TFT_eSPI tft = TFT_eSPI();
@@ -49,6 +62,8 @@ bool showBootScreen();
 void setup() {
     Serial.begin(115200);
     delay(200);
+
+    ESPNOWReceiver::begin();
 
     tft.begin();
     tft.setRotation(DISP_ROTATION);
@@ -174,6 +189,12 @@ void loop() {
                 if (imgPath.length() > 0) {
                     uiState = UI_IMAGE;
                     ImageDisplay::displayImage(imgPath);
+                    if (ESPNOWReceiver::hasPacket()) {
+                        XboxStatus status = ESPNOWReceiver::getLatest();
+                        xbox_status::show(&tft, status);
+                        delay(2000);
+                    }
+
                 } else {
                     uiState = UI_NO_IMAGES;
                     showNoImagesFound(WiFi.localIP().toString());
