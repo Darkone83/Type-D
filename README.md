@@ -1,16 +1,10 @@
-# Type D ESP32-S3 Display Firmware
+# Type D
 
 ## Overview
 
-**Type D** is a fully featured open-source firmware for an ESP32-S3-based display unit.  
+**Type D** is a fully featured open-source firmware for an ESP32-S3-based display unit. This unit is designed to replace the jewel on an original Xbox controller. 
 It’s designed for rich UI, touch navigation, random/static image display, animated GIFs, a WiFi-configurable webserver, and full SD card image management.
 
-- **Hardware:**  
-  - ESP32-S3 (with PSRAM recommended)
-  - 240x240 TFT display (TFT_eSPI compatible)
-  - CST816S capacitive touch controller
-  - SD Card (via SD_MMC)
-  - BLK pin for backlight brightness (PWM via IO32)
 - **Features:**  
   - JPG & GIF viewing (gallery, random, static modes)
   - Original Xbox-style menus, animated transitions
@@ -23,7 +17,7 @@ It’s designed for rich UI, touch navigation, random/static image display, anim
 
 ## Required Libraries
 
-To compile and run the **Type D ESP32-S3 Display Firmware**, install these libraries in your Arduino IDE or PlatformIO environment:
+To compile and run the **Type D Display Firmware**, install these libraries in your Arduino IDE or PlatformIO environment:
 
 ### **Core Libraries (via Arduino Library Manager or GitHub)**
 
@@ -37,37 +31,12 @@ To compile and run the **Type D ESP32-S3 Display Firmware**, install these libra
 | **ESP32 FS**       | Espressif (built-in for ESP32)     | For SD_MMC and filesystem support |
 | **Preferences**    | Espressif (built-in for ESP32)     | NVS (persistent storage) support |
 
-**Other libraries (if needed for extras):**
-- **WebServer** (built-in with ESP32 Arduino core)
-- **SD_MMC** (built-in with ESP32 Arduino core)
 
 ### **How to Install**
 1. Open Arduino IDE.
 2. Go to `Sketch` → `Include Library` → `Manage Libraries…`
 3. Search for and install each library above.
 4. For libraries only available on GitHub (or for latest versions), use `Sketch` → `Include Library` → `Add .ZIP Library…` after downloading from GitHub.
-
-**TFT_eSPI users:**  
-Remember to configure your `User_Setup.h` or `User_Setups/SetupXX.h` for your wiring/pinout.
-
----
-
-## File/Module Structure
-
-| File/Folder           | Purpose / Key Functions                                 |
-|-----------------------|--------------------------------------------------------|
-| `Type_D.ino`          | Main application loop, hardware setup, core state      |
-| `ui.cpp/.h`           | Menu/UI navigation, brightness, settings, About screen |
-| `gallery.cpp/.h`      | Image gallery navigation and image selection logic     |
-| `imagedisplay.cpp/.h` | Rendering engine for JPG/GIF, modes, timing            |
-| `fileman.cpp/.h`      | SD card file browsing, image management                |
-| `disp_cfg.h`          | Display and firmware config (rotation, version, etc)   |
-| `fwupd.cpp/.h`        | (Optional) Firmware update handling                    |
-| `detect.cpp/.h`       | (Optional) Device detection utilities                  |
-| `/resources/`         | About screen images (DC.jpg, TR.jpg, XBS.jpg)          |
-| `/boot/boot.jpg`      | Boot splash image (optional)                           |
-| `/jpg/`               | User JPGs                                              |
-| `/gif/`               | User GIFs                                              |
 
 ---
 
@@ -82,7 +51,7 @@ Remember to configure your `User_Setup.h` or `User_Setups/SetupXX.h` for your wi
 ### First Boot & Setup
 
 1. Flash firmware to your ESP32-S3.
-2. Insert SD card with `/jpg/` and/or `/gif/` folders (optional, can upload later).
+2. Insert SD card with `/boot/`,`/jpg/`, `/gif/`, and `/resources/` folders (optional, can upload later).
 3. Power up. The device will display a boot image (if present), then:
     - If WiFi is not configured, it launches the **WiFiManager captive portal** (“TypeD-Setup”)—connect to this SSID and set up WiFi.
     - If images are present, shows a random image. If none, prompts upload via web.
@@ -151,19 +120,6 @@ Remember to configure your `User_Setup.h` or `User_Setups/SetupXX.h` for your wi
 
 ---
 
-## Troubleshooting
-
-- **No images found?**  
-  - Upload via webserver, ensure correct folder structure.
-- **No WiFi?**  
-  - Hold for WiFiManager portal; restart from Settings if needed.
-- **Display issues?**  
-  - Check pin mapping in `disp_cfg.h` and wiring.
-- **SD errors?**  
-  - Format card FAT32, ensure folders are `/jpg/` and `/gif/`.
-
----
-
 ## Credits
 
 - **Concept by:** Andr0
@@ -176,10 +132,5 @@ Remember to configure your `User_Setup.h` or `User_Setups/SetupXX.h` for your wi
 - Menu theming and transitions: edit `ui.cpp`.
 - Add new features: extend menu or webserver as needed.
 
----
-
-## License
-
-*(Add your license here: MIT, GPL, etc)*
 
 ---
