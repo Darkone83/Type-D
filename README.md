@@ -71,7 +71,8 @@ _Install these via Arduino Library Manager or from their GitHub releases:_
 4. **No need to modify `User_Setup.h`**:  
    - The project uses a custom display configuration file (`disp_cfg.h`).
 5. **Open the `Type_D.ino` project** and verify it compiles.
-6. **Flash the firmware** to your ESP32-S3 using USB.
+6. **Flash the firmware** to your ESP32-S3 using USB. Or use the Web flasher [![Type D Web Flasher](https://img.shields.io/badge/Web%20Flasher-Type%20D-green?logo=esp32&logoColor=white)](https://darkone83.github.io/type-d.github.io/)
+
 7. **Connect hardware:**  
    - TFT display (GC9A01)  
    - Touch panel (CST816S)  
@@ -94,7 +95,7 @@ _Install these via Arduino Library Manager or from their GitHub releases:_
 
 
 
-### Type D Expansion (ESP32/ESP8266)
+### Type D Expansion (ESP32-S3)
 
 1. **Install Arduino IDE** and ESP32/ESP8266 board package as appropriate.
 2. **Open the `Type_D_exp.ino` (or equivalent)** and configure your hardware pins and Xbox data sources.
