@@ -50,15 +50,11 @@
 
 _Install these via Arduino Library Manager or from their GitHub releases:_
 
-- [`TFT_eSPI`](https://github.com/Bodmer/TFT_eSPI) (with GC9A01 driver enabled; uses custom display config in `disp_cfg.h`)
-- [`SD_MMC`](https://github.com/espressif/arduino-esp32/tree/master/libraries/SD_MMC) (included with ESP32 core)
+- [`TFT_eSPI`](https://github.com/Bodmer/TFT_eSPI)
 - [`WiFiManager`](https://github.com/tzapu/WiFiManager)
-- [`CST816S`](https://github.com/wuxx/CST816S) or equivalent for touch
+- [`CST816S`](https://github.com/fbiego/CST816S) by fbiego
 - [`TJpg_Decoder`](https://github.com/Bodmer/TJpg_Decoder)
 - [`AnimatedGIF`](https://github.com/bitbank2/AnimatedGIF)
-- ESP-NOW (included in ESP32 Arduino Core)
-- [`WebServer`](https://github.com/espressif/arduino-esp32/tree/master/libraries/WebServer) (included with ESP32 core)
-
 ---
 
 ## Build Instructions
@@ -73,11 +69,7 @@ _Install these via Arduino Library Manager or from their GitHub releases:_
 5. **Open the `Type_D.ino` project** and verify it compiles.
 6. **Flash the firmware** to your ESP32-S3 using USB. Or use the Web flasher [![Type D Web Flasher](https://img.shields.io/badge/Web%20Flasher-Type%20D-green?logo=esp32&logoColor=white)](https://darkone83.github.io/type-d.github.io/)
 
-7. **Connect hardware:**  
-   - TFT display (GC9A01)  
-   - Touch panel (CST816S)  
-   - SD card wiring
-8. **SD Card Setup:**  
+7. **SD Card Setup:**  
    - Format your SD card as **FAT32** and arrange the folders and files as follows:
 
 
@@ -102,6 +94,14 @@ _Install these via Arduino Library Manager or from their GitHub releases:_
 3. **Flash the firmware** to the ESP32/ESP8266 module.
 4. **Wire the module** to the Xbox 5V, GND, SDA and SCL
 ---
+
+## Hardware installation
+
+### Type D display
+TODO
+
+### Type D Expansion
+TODO
 
 ## Navigation Instructions
 
