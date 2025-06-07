@@ -1,136 +1,134 @@
-# Type D
+# Type D: Original Xbox TFT Display Project
 
-## Overview
+**Type D** is a two-part open-source system for the original Xbox, bringing a modern, customizable, and fully themed display experience to your console. It replaces the stock jewel with a 240x240 TFT touch display, controlled by an ESP32-S3, and optionally pairs with the Type D Expansion module for live Xbox status telemetry.
 
-**Type D** is a fully featured open-source firmware for an ESP32-S3-based display unit. This unit is designed to replace the jewel on an original Xbox controller. 
-It’s designed for rich UI, touch navigation, random/static image display, animated GIFs, a WiFi-configurable webserver, and full SD card image management.
+---
 
-- **Features:**  
-  - JPG & GIF viewing (gallery, random, static modes)
-  - Original Xbox-style menus, animated transitions
-  - WiFiManager captive portal for network setup
-  - Web upload of images/files via browser
-  - Persistent settings (brightness, WiFi)
-  - Firmware upgrade and diagnostics hooks
+## Features
+
+### Type D Display Firmware (ESP32-S3)
+
+- Smart round TFT display for the Xbox jewel  
+- Animated boot screen from `/boot/boot.jpg` or `/boot/boot.gif`  
+- Image & GIF slideshow: Display static images or animated GIFs from SD card  
+- Touchscreen Xbox-style menu:  
+  - Navigate images  
+  - Adjust brightness  
+  - View device/firmware info  
+  - Initiate WiFi setup or reset WiFi credentials  
+- WiFiManager captive portal: Simple WiFi setup with a custom splash page  
+- Web interface: Upload and manage gallery images over WiFi  
+- Persistent settings: Stores WiFi and brightness settings in flash  
+- Themed UI: Custom-drawn menus and overlays with original Xbox design language  
+- ESP-NOW Receiver:  
+  - **Displays live Xbox system status when paired with the Type D Expansion module**  
+  - Shows real-time overlay with fan speed, CPU temp, network IP, and current title/app  
+
+### Type D Expansion Firmware (ESP32/ESP8266)
+
+- Plugs into your Xbox (or companion mod board)  
+- Gathers system telemetry:  
+  - Fan speed  
+  - CPU temperature  
+  - Current IP address  
+  - Currently running game/title/app  
+- Broadcasts telemetry via ESP-NOW (no WiFi setup needed)  
+- Instant pairing with any nearby Type D Display unit  
+- Low-latency, infrastructure-free wireless communication  
+- Easy to integrate with homebrew, modchips, or expansion boards  
+
+---
+
+## Required Hardware
+
+- **Type D Display**: ESP32-S3 module (recommended: ESP32-S3 + 240x240 TFT round GC9A01 display + CST816S touch panel + SD card support)
+- **Type D Expansion**: ESP32 or ESP8266 module (for Xbox telemetry sender)
 
 ---
 
 ## Required Libraries
 
-To compile and run the **Type D Display Firmware**, install these libraries in your Arduino IDE or PlatformIO environment:
+_Install these via Arduino Library Manager or from their GitHub releases:_
 
-### **Core Libraries (via Arduino Library Manager or GitHub)**
-
-| Library            | Author/GitHub                      | Notes                          |
-|--------------------|------------------------------------|-------------------------------|
-| **TFT_eSPI**       | Bodmer                             | [GitHub link](https://github.com/Bodmer/TFT_eSPI) <br> For 240x240 TFT display (configure User_Setup.h for your wiring) |
-| **TJpg_Decoder**   | Bodmer                             | [GitHub link](https://github.com/Bodmer/TJpg_Decoder) <br> JPEG image decoding |
-| **AnimatedGIF**    | bitbank2                           | [GitHub link](https://github.com/bitbank2/AnimatedGIF) <br> GIF playback for ESP32 |
-| **CST816S**        | fbiego                             | [GitHub link](https://github.com/fbiego/CST816S) <br> Touch controller driver |
-| **WiFiManager**    | tzapu                              | [GitHub link](https://github.com/tzapu/WiFiManager) <br> For captive portal WiFi setup |
-| **ESP32 FS**       | Espressif (built-in for ESP32)     | For SD_MMC and filesystem support |
-| **Preferences**    | Espressif (built-in for ESP32)     | NVS (persistent storage) support |
-
-
-### **How to Install**
-1. Open Arduino IDE.
-2. Go to `Sketch` → `Include Library` → `Manage Libraries…`
-3. Search for and install each library above.
-4. For libraries only available on GitHub (or for latest versions), use `Sketch` → `Include Library` → `Add .ZIP Library…` after downloading from GitHub.
+- [`TFT_eSPI`](https://github.com/Bodmer/TFT_eSPI) (with GC9A01 driver enabled; uses custom display config in `disp_cfg.h`)
+- [`SD_MMC`](https://github.com/espressif/arduino-esp32/tree/master/libraries/SD_MMC) (included with ESP32 core)
+- [`WiFiManager`](https://github.com/tzapu/WiFiManager)
+- [`CST816S`](https://github.com/wuxx/CST816S) or equivalent for touch
+- [`TJpg_Decoder`](https://github.com/Bodmer/TJpg_Decoder)
+- [`AnimatedGIF`](https://github.com/bitbank2/AnimatedGIF)
+- ESP-NOW (included in ESP32 Arduino Core)
+- [`WebServer`](https://github.com/espressif/arduino-esp32/tree/master/libraries/WebServer) (included with ESP32 core)
 
 ---
 
-## Getting Started
+## Build Instructions
 
-### Hardware Connections
+### Type D Display (ESP32-S3)
 
-- **BLK (Backlight):** Connect display BLK to ESP32 IO32 for brightness control.
-- **Touch:** SDA, SCL, RST, INT to the CST816S as per your pinout.
-- **SD Card:** Wired to ESP32 SD_MMC interface.
+1. **Install Arduino IDE** (recommended 2.x or later).
+2. **Install the ESP32 board package** via Board Manager, and select your ESP32-S3 board.
+3. **Install all required libraries** (see above).
+4. **No need to modify `User_Setup.h`**:  
+   - The project uses a custom display configuration file (`disp_cfg.h`).
+5. **Open the `Type_D.ino` project** and verify it compiles.
+6. **Flash the firmware** to your ESP32-S3 using USB.
+7. **Connect hardware:**  
+   - TFT display (GC9A01)  
+   - Touch panel (CST816S)  
+   - SD card wiring
+8. **SD Card Setup:**  
+   - Format your SD card as **FAT32** and arrange the folders and files as follows:
 
-### First Boot & Setup
 
-1. Flash firmware to your ESP32-S3. Or use the WebFlasher [![Web Flash](https://img.shields.io/badge/Flash%20ESP32%20Firmware-Web%20Installer-blue)](https://darkone83.github.io/type-d.github.io/)
-2. Insert SD card with `/boot/`,`/jpg/`, `/gif/`, and `/resources/` folders (optional, can upload later).
-3. Power up. The device will display a boot image (if present), then:
-    - If WiFi is not configured, it launches the **WiFiManager captive portal** (“TypeD-Setup”)—connect to this SSID and set up WiFi.
-    - If images are present, shows a random image. If none, prompts upload via web.
-4. Access the device’s webserver (IP shown on display) to upload images.
+   - **/boot/**: Boot splash image or animation displayed at startup.
+   - **/gallery/**: Images and GIFs shown in the main gallery or slideshow.
+   - **/resources/**: All UI assets (icons, overlays, fonts) loaded dynamically by the firmware.
+   - **/update/**: Place a `upgrade.bin` here to perform an SD-based firmware upgrade.
+
+   **Notes:**
+   - If no gallery images are present, a “No images found” screen will be shown.
+   - File types supported are determined by firmware: common formats are `.jpg`, `.gif` (for UI assets).
+   - Resource files should use names expected by your UI/menu code.
+   - Only one firmware file should be present in `/update/` at a time.
+   - Large image files may affect load speed; optimize/resize for best results.
+
+
+
+### Type D Expansion (ESP32/ESP8266)
+
+1. **Install Arduino IDE** and ESP32/ESP8266 board package as appropriate.
+2. **Open the `Type_D_exp.ino` (or equivalent)** and configure your hardware pins and Xbox data sources.
+3. **Flash the firmware** to the ESP32/ESP8266 module.
+4. **Wire the module** to the Xbox 5V, GND, SDA and SCL
+---
+
+## Navigation Instructions
+
+### On-Screen Touch Controls:
+
+- **Double-tap** anywhere on the display to open the main menu.
+- **Swipe left/right** to browse through gallery images (if enabled).
+- **Tap menu icons** to:
+  - Adjust screen brightness
+  - View device info/about
+  - Start or reset WiFi setup
+  - Return to the main gallery view
+- **To exit menus**, select the “Back” or exit option, or double-tap again (as indicated).
+- When Xbox telemetry is active, a status overlay will appear automatically and disappear after a few seconds—no interaction needed.
 
 ---
 
-## User Interface & Navigation
+## How It Works
 
-### Main UI States
-
-- **Boot Splash:** Shows `/boot/boot.jpg` or `/boot/boot.gif` if present; otherwise shows “Type D Booting...”
-- **Image Display:** Shows a random JPG or GIF.  
-- **No Images:** If no images are found, displays a message with webserver IP.
-- **WiFi Setup:** If WiFi not configured, shows instructions and captive portal info.
-- **Menu:** Accessed by double-tapping the screen (CST816S double-tap gesture).
-
-### Main Menu (double-tap to open)
-
-- **Settings** (tap): Enter settings submenu.
-- **Gallery** (tap): Browse JPGs/GIFs, pick display mode (see Gallery Menu).
-- **About** (tap): See credits, version, and themed images (with fade transitions).
-- **(Exit):** Double-tap to exit menu.
-
-### Settings Submenu
-
-- **Brightness:** Xbox-themed slider with `-` and `+` to set backlight (5–100%). Saved persistently.
-- **Restart WiFi Portal:** Restarts captive portal (for new WiFi setup).
-- **Forget WiFi:** Clears saved WiFi credentials (device will reboot to setup portal on next boot).
-- **Back:** Returns to Main Menu.
-
-### Gallery Menu
-
-- **JPG:** Start gallery mode with first JPG from `/jpg/`.
-- **GIF:** Start gallery mode with first GIF from `/gif/`.
-- **Random JPG:** Random-slideshow from `/jpg/` (2s per image).
-- **Random GIF:** Random-slideshow from `/gif/` (auto-advances after GIF ends).
-- **Back:** Returns to Main Menu.
-
-#### **Gallery Navigation Gestures**
-- **Tap:** Selects/pauses current image.
-- **Swipe Left/Right:** Next/previous image.
-- **Swipe Up:** Exit to previous menu.
+- **Type D Display** runs as a stand-alone smart dashboard and animated photo frame, displaying images and menus when no Xbox is online.
+- When a **Type D Expansion** module is active on the same network, the display instantly receives Xbox system telemetry and shows a themed overlay with the latest status—no configuration required.
 
 ---
 
-## Display Modes
+## Special Thanks
 
-- **Static:** Show selected JPG or loop GIF until user exits.
-- **Random:** In random JPG/GIF mode, show new image (JPG = 2s, GIF = after last frame).
-- **Gallery:** Navigate through images manually, or set one as “static” image.
+- Andr0, Team Resurgent, Xbox Scene, and the xbox modding community
 
 ---
 
-## Web Interface
-
-- **Access:** Find device IP on display (“Please upload images: x.x.x.x”).
-- **Upload:** Drag-and-drop JPG/GIF files to `/jpg/` or `/gif/` via browser.
-
----
-
-## Persistence
-
-- **Brightness** and **WiFi** settings are stored in ESP32 NVS.
-- WiFiManager handles WiFi configuration and can be reset via menu.
-
----
-
-## Credits
-
-- **Concept by:** Andr0
-- **Code by:** Darkone83
----
-
-## Customization
-
-- Update splash/about images by replacing `/boot/boot.jpg` and `/resources/*.jpg`.
-- Menu theming and transitions: edit `ui.cpp`.
-- Add new features: extend menu or webserver as needed.
-
-
----
+**Questions, feedback, or want to contribute? Open an issue or PR on GitHub!**
