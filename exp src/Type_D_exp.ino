@@ -2,13 +2,14 @@
 #include "parser_xboxsmbus.h"
 #include "cache_manager.h"
 #include "espnow_transmitter.h"
+#include "debug_logger.h"
 
-#define I2C_SDA_PIN 21   // Adjust as needed
-#define I2C_SCL_PIN 22
+#define I2C_SDA_PIN 7   // Set to your working SMBus SDA pin
+#define I2C_SCL_PIN 6   // Set to your working SMBus SCL pin
 
 void setup() {
   Serial.begin(115200);
-  delay(500);
+  delay(200);  // Give time for Serial to initialize
 
   Cache_Manager::begin();
   I2C_Sniffer::begin(I2C_SDA_PIN, I2C_SCL_PIN);
@@ -18,8 +19,10 @@ void setup() {
 }
 
 void loop() {
+  // Run the sniffer and parser as often as possible for best accuracy
   I2C_Event evt;
-  if (I2C_Sniffer::getNextEvent(evt)) {
+  while (I2C_Sniffer::getNextEvent(evt)) {   // <-- changed to while for fast dequeuing
+    Debug_Logger::logI2CEvent(evt);
     Parser_XboxSMBus::parse(evt);
   }
 
@@ -29,5 +32,5 @@ void loop() {
     Parser_XboxSMBus::printStatus();
   }
 
-  ESPNow_Transmitter::loop();
+  ESPNow_Transmitter::loop(); // Still called every loop for timely transmission
 }

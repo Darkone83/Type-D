@@ -1,47 +1,29 @@
 #include "espnow_receiver.h"
-#include <esp_now.h>
 
-namespace ESPNOWReceiver {
+static XboxPacket latestPacket;
+static bool hasPacketFlag = false;
 
-static volatile bool _hasPacket = false;
-static XboxStatus _lastPacket;
-static void (*_userCallback)(const XboxStatus&) = nullptr;
-
-// CORRECT ESP-NOW CALLBACK SIGNATURE FOR ESP32 Arduino 3.x+ (S3, etc)
-static void onReceive(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
-    if (len == sizeof(XboxStatus)) {
-        memcpy((void*)&_lastPacket, data, sizeof(XboxStatus));
-        _hasPacket = true;
-        if (_userCallback) _userCallback(_lastPacket);
+// Correct ESP-NOW receive callback for ESP32 Arduino Core 3.x+
+void onDataRecv(const esp_now_recv_info_t* recv_info, const uint8_t* data, int len) {
+    if (len == sizeof(XboxPacket)) {
+        memcpy(&latestPacket, data, sizeof(XboxPacket));
+        hasPacketFlag = true;
     }
 }
 
-void begin() {
+void ESPNOWReceiver::begin() {
     WiFi.mode(WIFI_STA);
     if (esp_now_init() != ESP_OK) {
-        Serial.println("ESP-NOW init failed!");
+        Serial.println("Error initializing ESP-NOW");
         return;
     }
-    esp_now_register_recv_cb(onReceive);
+    esp_now_register_recv_cb(onDataRecv);
 }
 
-void end() {
-    esp_now_unregister_recv_cb();
-    esp_now_deinit();
-    _hasPacket = false;
+bool ESPNOWReceiver::hasPacket() {
+    return hasPacketFlag;
 }
 
-bool hasPacket() {
-    return _hasPacket;
+XboxPacket ESPNOWReceiver::getLatest() {
+    return latestPacket;
 }
-
-XboxStatus getLatest() {
-    _hasPacket = false;
-    return _lastPacket;
-}
-
-void onPacket(void (*cb)(const XboxStatus&)) {
-    _userCallback = cb;
-}
-
-} // namespace ESPNOWReceiver

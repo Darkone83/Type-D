@@ -190,7 +190,7 @@ void loop() {
                     uiState = UI_IMAGE;
                     ImageDisplay::displayImage(imgPath);
                     if (ESPNOWReceiver::hasPacket()) {
-                        XboxStatus status = ESPNOWReceiver::getLatest();
+                        XboxPacket status = ESPNOWReceiver::getLatest();
                         xbox_status::show(&tft, status);
                         delay(2000);
                     }
