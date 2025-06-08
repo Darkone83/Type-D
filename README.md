@@ -24,7 +24,7 @@
   - **Displays live Xbox system status when paired with the Type D Expansion module**  
   - Shows real-time overlay with fan speed, CPU temp, network IP, and current title/app  
 
-### Type D Expansion Firmware (ESP32/ESP8266)
+### Type D Expansion Firmware (ESP32-S3)
 
 - Plugs into your Xbox (or companion mod board)  
 - Gathers system telemetry:  
@@ -42,7 +42,7 @@
 ## Required Hardware
 
 - **Type D Display**: ESP32-S3 module (recommended: ESP32-S3 + 240x240 TFT round GC9A01 display + CST816S touch panel + SD card support)
-- **Type D Expansion**: ESP32 or ESP8266 module (for Xbox telemetry sender)
+- **Type D Expansion**: ESP32-S3 module (for Xbox telemetry sender) -- Not required for operation and is optional.
 
 ---
 
@@ -61,26 +61,30 @@ _Install these via Arduino Library Manager or from their GitHub releases:_
 
 ### Type D Display (ESP32-S3)
 
+#### Web Flasher: [![Type D Web Flasher](https://img.shields.io/badge/Web%20Flasher-Type%20D-green?logo=esp32&logoColor=white)](https://darkone83.github.io/type-d.github.io/)
+
+#### Build Instructions
 1. **Install Arduino IDE** (recommended 2.x or later).
 2. **Install the ESP32 board package** via Board Manager, and select your ESP32-S3 board.
 3. **Install all required libraries** (see above).
 4. **No need to modify `User_Setup.h`**:  
    - The project uses a custom display configuration file (`disp_cfg.h`).
 5. **Open the `Type_D.ino` project** and verify it compiles.
-6. **Flash the firmware** to your ESP32-S3 using USB. Or use the Web flasher [![Type D Web Flasher](https://img.shields.io/badge/Web%20Flasher-Type%20D-green?logo=esp32&logoColor=white)](https://darkone83.github.io/type-d.github.io/)
+6. **Flash the firmware** to your ESP32-S3 using USB.
 
 7. **SD Card Setup:**  
    - Format your SD card as **FAT32** and arrange the folders and files as follows:
 
 
-   - **/boot/**: Boot splash image or animation displayed at startup.
-   - **/gallery/**: Images and GIFs shown in the main gallery or slideshow.
-   - **/resources/**: All UI assets (icons, overlays, fonts) loaded dynamically by the firmware.
-   - **/update/**: Place a `upgrade.bin` here to perform an SD-based firmware upgrade.
+   - **/boot/**: Boot splash image or animation displayed at startup. Must be 240x240
+   - **/jpg/**: All JPGs go here must be 240x240
+   - **/gif/**: All GIFs go here must be 240x240
+   - **/resources/**: All UI assets.
+   - **/update/**: Place `upgrade.bin` here to perform an SD-based firmware upgrade.
 
    **Notes:**
    - If no gallery images are present, a “No images found” screen will be shown.
-   - File types supported are determined by firmware: common formats are `.jpg`, `.gif` (for UI assets).
+   - File types supported are determined by firmware: common formats are `.jpg`,`.gif` (for UI assets).
    - Resource files should use names expected by your UI/menu code.
    - Only one firmware file should be present in `/update/` at a time.
    - Large image files may affect load speed; optimize/resize for best results.
@@ -91,7 +95,7 @@ _Install these via Arduino Library Manager or from their GitHub releases:_
 
 1. **Install Arduino IDE** and ESP32/ESP8266 board package as appropriate.
 2. **Open the `Type_D_exp.ino` (or equivalent)** and configure your hardware pins and Xbox data sources.
-3. **Flash the firmware** to the ESP32/ESP8266 module.
+3. **Flash the firmware** to the ESP32-S3 module.
 4. **Wire the module** to the Xbox 5V, GND, SDA and SCL
 ---
 
