@@ -45,6 +45,10 @@ void setBrightness(int percent);
 void restartWiFiManager();
 void showAbout();
 
+void redrawActive();
+
+void drawBrightnessMenu();
+
 } // namespace UI
 
 #endif

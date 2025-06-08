@@ -28,6 +28,7 @@ using fs::FS;
 #include "cmd.h"
 #include "espnow_receiver.h"
 #include "xbox_status.h"
+#include "sleepmgr.h"
 
 // --- Globals ---
 TFT_eSPI tft = TFT_eSPI();
@@ -64,6 +65,9 @@ void setup() {
     delay(200);
 
     ESPNOWReceiver::begin();
+
+    // --- Initialize Sleep Manager
+    SleepMgr::begin();   // << Ensure persistent sleep state is loaded
 
     tft.begin();
     tft.setRotation(DISP_ROTATION);
@@ -119,6 +123,20 @@ void setup() {
 }
 
 void loop() {
+    // --- SleepMgr: Wake on tap ---
+    if (SleepMgr::isSleeping()) {
+        if (touch.available() && touch.data.gestureID == 5) { // Single tap
+            SleepMgr::wake();
+            UI::redrawActive();   // Add a helper to redraw the current UI/menu/image
+        } else {
+            delay(50);
+            return;  // While sleeping, don't process anything else
+        }
+    }
+
+    // --- SleepMgr: Update inactivity timer ---
+    SleepMgr::update();
+    
     // --- Handle touch events ---
     if (touch.available()) {
         // Enter menu from image/no-image/wifi-setup
