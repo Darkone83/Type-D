@@ -93,7 +93,7 @@ _Install these via Arduino Library Manager or from their GitHub releases:_
 
 ### Type D Expansion (ESP32-S3)
 
-1. **Install Arduino IDE** and ESP32/ESP8266 board package as appropriate.
+1. **Install Arduino IDE** and ESP32-S3 board package as appropriate.
 2. **Open the `Type_D_exp.ino` (or equivalent)** and configure your hardware pins and Xbox data sources.
 3. **Flash the firmware** to the ESP32-S3 module.
 4. **Wire the module** to the Xbox 5V, GND, SDA and SCL
