@@ -65,8 +65,12 @@ _Install these via Arduino Library Manager or from their GitHub releases:_
 ## Hardware installation
 
 ### Type D display
+
+## Type S
 TODO
 
+## Duke
+TODO
 
 
 ## 🗺️ Navigation & Menu Tree
