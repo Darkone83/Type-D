@@ -6,43 +6,23 @@
 
 ## Features
 
-### Type D Display Firmware (ESP32-S3)
+### Type D Display Firmware
 
 - Smart round TFT display for the Xbox jewel  
 - Animated boot screen from `/boot/boot.jpg` or `/boot/boot.gif`  
 - Image & GIF slideshow: Display static images or animated GIFs from SD card  
 - Touchscreen Xbox-style menu:  
   - Navigate images  
-  - Adjust brightness  
-  - View device/firmware info  
+  - Adjust brightness    
   - Initiate WiFi setup or reset WiFi credentials  
-- WiFiManager captive portal: Simple WiFi setup with a custom splash page  
 - Web interface: Upload and manage gallery images over WiFi  
-- Persistent settings: Stores WiFi and brightness settings in flash  
-- Themed UI: Custom-drawn menus and overlays with original Xbox design language  
+- Themed UI: Custom-drawn menus and overlays with original Xbox flair 
 - ESP-NOW Receiver:  
-  - **Displays live Xbox system status when paired with the Type D Expansion module**  
-  - Shows real-time overlay with fan speed, CPU temp, network IP, and current title/app  
-
-### Type D Expansion Firmware (ESP32-S3)
-
-- Plugs into your Xbox (or companion mod board)  
-- Gathers system telemetry:  
-  - Fan speed  
-  - CPU temperature  
-  - Current IP address  
-  - Currently running game/title/app  
-- Broadcasts telemetry via ESP-NOW (no WiFi setup needed)  
-- Instant pairing with any nearby Type D Display unit  
-- Low-latency, infrastructure-free wireless communication  
-- Easy to integrate with homebrew, modchips, or expansion boards  
-
----
 
 ## Required Hardware
 
 - **Type D Display**: ESP32-S3 module (recommended: ESP32-S3 + 240x240 TFT round GC9A01 display + CST816S touch panel + SD card support)
-- **Type D Expansion**: ESP32-S3 module (for Xbox telemetry sender) -- Not required for operation and is optional.
+
 
 ---
 
@@ -50,16 +30,17 @@
 
 _Install these via Arduino Library Manager or from their GitHub releases:_
 
-- [`TFT_eSPI`](https://github.com/Bodmer/TFT_eSPI)
-- [`WiFiManager`](https://github.com/tzapu/WiFiManager)
+- [`LovyanGFX`](https://github.com/lovyan03/LovyanGFX)
 - [`CST816S`](https://github.com/fbiego/CST816S) by fbiego
-- [`TJpg_Decoder`](https://github.com/Bodmer/TJpg_Decoder)
 - [`AnimatedGIF`](https://github.com/bitbank2/AnimatedGIF)
+- [`ESPAsyncWebserver`] (https://github.com/me-no-dev/ESPAsyncWebServer)
+- [`ESPAsyncTCP`] (https://github.com/me-no-dev/ESPAsyncTCP)
+
 ---
 
 ## Build Instructions
 
-### Type D Display (ESP32-S3)
+### Type D Display 
 
 #### Web Flasher: [![Type D Web Flasher](https://img.shields.io/badge/Web%20Flasher-Type%20D-green?logo=esp32&logoColor=white)](https://darkone83.github.io/type-d.github.io/)
 
@@ -67,60 +48,53 @@ _Install these via Arduino Library Manager or from their GitHub releases:_
 1. **Install Arduino IDE** (recommended 2.x or later).
 2. **Install the ESP32 board package** via Board Manager, and select your ESP32-S3 board.
 3. **Install all required libraries** (see above).
-4. **No need to modify `User_Setup.h`**:  
-   - The project uses a custom display configuration file (`disp_cfg.h`).
+4. **Setup board and options** Board: ESP32 Dev module, Flash size: 16MB, Partition Scheme: 16MB Flash (2MB APP/12.5MB FATFS), PSRAM: Enabled
 5. **Open the `Type_D.ino` project** and verify it compiles.
-6. **Flash the firmware** to your ESP32-S3 using USB.
+6. **Flash the firmware** to your module using USB.
+7. **Connect to WiFi** Connect the device via wifi and select your network with the custom portal.
+8. **Upload files**: Log in to the File Manager via the web interface Http://<device-ip>:8080 and upload your media. 
 
-7. **SD Card Setup:**  
-   - Format your SD card as **FAT32** and arrange the folders and files as follows:
-
-
-   - **/boot/**: Boot splash image or animation displayed at startup. Must be 240x240
-   - **/jpg/**: All JPGs go here must be 240x240
-   - **/gif/**: All GIFs go here must be 240x240
-   - **/resources/**: All UI assets.
-   - **/update/**: Place `upgrade.bin` here to perform an SD-based firmware upgrade.
 
    **Notes:**
    - If no gallery images are present, a “No images found” screen will be shown.
    - File types supported are determined by firmware: common formats are `.jpg`,`.gif` (for UI assets).
-   - Resource files should use names expected by your UI/menu code.
-   - Only one firmware file should be present in `/update/` at a time.
+   - Resource files should use names expected by your UI/menu code. you can access the resource uploader bu going to device=ip:8080/resource
    - Large image files may affect load speed; optimize/resize for best results.
-
-
-
-### Type D Expansion (ESP32-S3)
-
-1. **Install Arduino IDE** and ESP32-S3 board package as appropriate.
-2. **Open the `Type_D_exp.ino` (or equivalent)** and configure your hardware pins and Xbox data sources.
-3. **Flash the firmware** to the ESP32-S3 module.
-4. **Wire the module** to the Xbox 5V, GND, SDA and SCL
----
 
 ## Hardware installation
 
 ### Type D display
 TODO
 
-### Type D Expansion
-TODO
 
-## Navigation Instructions
 
-### On-Screen Touch Controls:
+## 🗺️ Navigation & Menu Tree
 
-- **Double-tap** anywhere on the display to open the main menu.
-- **Swipe left/right** to browse through gallery images (if enabled).
-- **Tap menu icons** to:
-  - Adjust screen brightness
-  - View device info/about
-  - Start or reset WiFi setup
-  - Return to the main gallery view
-- **To exit menus**, select the “Back” or exit option, or double-tap again (as indicated).
-- When Xbox telemetry is active, a status overlay will appear automatically and disappear after a few seconds—no interaction needed.
+**Main Menu Structure:**
+```
+[ Main Menu ]
+ ├─ Settings
+ │    ├─ Brightness
+ │    └─ WiFi info
+ │    └─ Forget WiFi
+ │    └─ Back
+ ├─ About
+ └─ Exit
+```
 
+### Navigation
+
+- **Touch**
+  - *Single tap*: Select menu item
+  - *Swipe up/down*: Scroll through menus or items
+  - *Double tap*: Enter Type D Menu
+- **Settings Menu**
+  - *Brightness*: Adjust display backlight (0-100%)
+  - *WiFi Info*: Displayes current WiFi netowrk connection and IP address
+  - *Forget WiFi*: Forgets WiFi settings and restarts the connection portal
+  - *Back*: Returns to main menu
+- **About**: Shows build/version info and credits
+- **Exit**: Exits meny
 ---
 
 ## How It Works
@@ -129,6 +103,12 @@ TODO
 - When a **Type D Expansion** module is active on the same network, the display instantly receives Xbox system telemetry and shows a themed overlay with the latest status—no configuration required.
 
 ---
+
+## Notes
+
+- GIF support is experimental at this point and can cause issues or crashes its being looked into.
+
+___
 
 ## Special Thanks
 
