@@ -48,11 +48,11 @@ _Install these via Arduino Library Manager or from their GitHub releases:_
 1. **Install Arduino IDE** (recommended 2.x or later).
 2. **Install the ESP32 board package** via Board Manager, and select your ESP32-S3 board.
 3. **Install all required libraries** (see above).
-4. **Setup board and options** Board: ESP32 Dev module, Flash size: 16MB, Partition Scheme: 16MB Flash (2MB APP/12.5MB FATFS), PSRAM: Enabled
+4. **Setup board and options** Board** ESP32 Dev module, Flash size: 16MB, Partition Scheme: 16MB Flash (2MB APP/12.5MB FATFS), PSRAM: Enabled
 5. **Open the `Type_D.ino` project** and verify it compiles.
 6. **Flash the firmware** to your module using USB.
 7. **Connect to WiFi** Connect the device via wifi and select your network with the custom portal.
-8. **Upload files**: Log in to the File Manager via the web interface Http://<device-ip>:8080 and upload your media. 
+8. **Upload files** Log in to the File Manager via the web interface Http://<device-ip>:8080 and upload your media. 
 
 
    **Notes:**
