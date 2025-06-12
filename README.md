@@ -10,18 +10,19 @@
 
 - Smart round TFT display for the Xbox jewel  
 - Animated boot screen from `/boot/boot.jpg` or `/boot/boot.gif`  
-- Image & GIF slideshow: Display static images or animated GIFs from SD card  
-- Touchscreen Xbox-style menu:  
-  - Navigate images  
+- Image & GIF slideshow: Will select a random image on boot and process through them
+- Touchscreen Xbox-style menu:    
   - Adjust brightness    
   - Initiate WiFi setup or reset WiFi credentials  
 - Web interface: Upload and manage gallery images over WiFi  
-- Themed UI: Custom-drawn menus and overlays with original Xbox flair 
-- ESP-NOW Receiver:  
 
 ## Required Hardware
 
 - **Type D Display**: ESP32-S3 module (recommended: ESP32-S3 + 240x240 TFT round GC9A01 display + CST816S touch panel + SD card support)
+
+**AliExpress** <a href="https://www.aliexpress.us/item/3256805458117676.html?spm=a2g0o.order_list.order_list_main.5.38db18023gODs6&gatewayAdapt=glo2usa">ESP32-TXT 1.28 inch display</a>
+
+**Amazon** <a href="https://www.amazon.com/dp/B0DLNMG2KP?ref=ppx_yo2ov_dt_b_fed_asin_title">1.28 inch ESP32-Development board</a>
 
 
 ---
@@ -58,7 +59,7 @@ _Install these via Arduino Library Manager or from their GitHub releases:_
    **Notes:**
    - If no gallery images are present, a “No images found” screen will be shown.
    - File types supported are determined by firmware: common formats are `.jpg`,`.gif` (for UI assets).
-   - Resource files should use names expected by your UI/menu code. you can access the resource uploader bu going to device=ip:8080/resource
+   - Resource files should use names expected by your UI/menu code. you can access the resource uploader by going to device=ip:8080/resource. All required resrouces are in the FATFS Setup/resource folder.
    - Large image files may affect load speed; optimize/resize for best results.
 
 ## Hardware installation
@@ -106,7 +107,7 @@ TODO
 
 ## Notes
 
-- GIF support is experimental at this point and can cause issues or crashes It's being looked into.
+- GIF support is experimental at this point and can cause issues or crashes It's being looked into. Also looking into proper GIF encoding aswel.
 
 ___
 
