@@ -33,8 +33,8 @@ _Install these via Arduino Library Manager or from their GitHub releases:_
 - [`LovyanGFX`](https://github.com/lovyan03/LovyanGFX)
 - [`CST816S`](https://github.com/fbiego/CST816S) by fbiego
 - [`AnimatedGIF`](https://github.com/bitbank2/AnimatedGIF)
-- [`ESPAsyncWebserver`] (https://github.com/me-no-dev/ESPAsyncWebServer)
-- [`ESPAsyncTCP`] (https://github.com/me-no-dev/ESPAsyncTCP)
+- [`ESPAsyncWebserver`](https://github.com/me-no-dev/ESPAsyncWebServer)
+- [`ESPAsyncTCP`](https://github.com/me-no-dev/ESPAsyncTCP)
 
 ---
 
@@ -90,11 +90,11 @@ TODO
   - *Double tap*: Enter Type D Menu
 - **Settings Menu**
   - *Brightness*: Adjust display backlight (0-100%)
-  - *WiFi Info*: Displayes current WiFi netowrk connection and IP address
+  - *WiFi Info*: Displays current WiFi network connection and IP address
   - *Forget WiFi*: Forgets WiFi settings and restarts the connection portal
   - *Back*: Returns to main menu
 - **About**: Shows build/version info and credits
-- **Exit**: Exits meny
+- **Exit**: Exits menu
 ---
 
 ## How It Works
@@ -106,13 +106,13 @@ TODO
 
 ## Notes
 
-- GIF support is experimental at this point and can cause issues or crashes its being looked into.
+- GIF support is experimental at this point and can cause issues or crashes It's being looked into.
 
 ___
 
 ## Special Thanks
 
-- Andr0, Team Resurgent, Xbox Scene, and the xbox modding community
+- Andr0, Team Resurgent, Xbox Scene, and the Xbox modding community
 
 ---
 
