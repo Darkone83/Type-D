@@ -2,8 +2,10 @@
 #define FILEMAN_H
 
 #include <Arduino.h>
-#include <ESPAsyncWebServer.h>
+class WebServer;
+
 namespace FileMan {
-    void begin(AsyncWebServer& server);
+    void begin(WebServer& server);
 }
+
 #endif

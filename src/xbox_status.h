@@ -1,7 +1,7 @@
 #pragma once
-#include <TFT_eSPI.h>
+#include "disp_cfg.h"
 #include "espnow_receiver.h"
 
 namespace xbox_status {
-    void show(TFT_eSPI* tft, const XboxPacket& packet);
+    void show(LGFX* tft, const XboxPacket& packet);
 }

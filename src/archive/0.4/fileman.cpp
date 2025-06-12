@@ -1,18 +1,17 @@
 // fileman.cpp
 #include <FS.h>
-#include <ESPAsyncWebServer.h>
-#include <FFat.h> // FATFS partition
+#include <WebServer.h>
+#include <SD_MMC.h>
 #include "fileman.h"
 #include "imagedisplay.h"
 
 // --- Internal state ---
-static AsyncWebServer* _server = nullptr;
+static WebServer* _server = nullptr;
 
 // --- HTML page strings ---
 static const char* _pageHeader =
     "<!DOCTYPE html><html><head>"
     "<title>File Manager</title>"
-    "<meta charset='UTF-8'>"
     "<meta name='viewport' content='width=400'>"
     "<style>body{font-family:sans-serif;text-align:center;}"
     "input[type=file]{margin:10px;}button{margin:5px;padding:5px 15px;}"
@@ -41,14 +40,13 @@ static const char* _pageFooter =
 String buildFileManagerPage();
 String listBootImageSection();
 String listGallerySection();
-String buildResourceManagerPage();
-void handleUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final);
-void handleDelete(AsyncWebServerRequest *request);
-void serveFile(AsyncWebServerRequest *request);
-void handleDisplayRandom(AsyncWebServerRequest *request);
-void handleDisplayRandomJpg(AsyncWebServerRequest *request);
-void handleDisplayRandomGif(AsyncWebServerRequest *request);
-void handleSelectImage(AsyncWebServerRequest *request);
+void handleUpload();
+void handleDelete();
+void serveFile();
+void handleDisplayRandom();
+void handleDisplayRandomJpg();
+void handleDisplayRandomGif();
+void handleSelectImage();
 String getRandomGalleryImagePath();
 String getRandomJpgImagePath();
 String getRandomGifImagePath();
@@ -58,63 +56,27 @@ File uploadFile;
 String uploadTargetPath;
 
 // --- Setup routes and handlers ---
-void FileMan::begin(AsyncWebServer& server) {
+void FileMan::begin(WebServer& server) {
     _server = &server;
 
     // Main UI
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(200, "text/html", buildFileManagerPage());
+    server.on("/", HTTP_GET, []() {
+        _server->send(200, "text/html", buildFileManagerPage());
     });
 
-    // Resource Manager page [ADD]
-    server.on("/resource", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(200, "text/html", buildResourceManagerPage());
-    });
-
-    // Serve FFat files
+    // Serve SD files
     server.on("/sd/boot", HTTP_GET, serveFile);
     server.on("/sd/jpg", HTTP_GET, serveFile);
     server.on("/sd/gif", HTTP_GET, serveFile);
-    server.on("/sd/resource", HTTP_GET, serveFile);
 
     // Upload handlers
-    server.on("/upload_boot", HTTP_POST, 
-        [](AsyncWebServerRequest *request){},
-        [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
-            handleUpload(request, filename, index, data, len, final);
-            if(final)
-                request->send(200, "text/html", "<b>Upload complete.</b><br>Redirecting...<script>setTimeout(()=>{location.href='/'} ,500);</script>");
-        }
-    );
-    server.on("/upload_jpg", HTTP_POST, 
-        [](AsyncWebServerRequest *request){},
-        [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
-            handleUpload(request, filename, index, data, len, final);
-            if(final)
-                request->send(200, "text/html", "<b>Upload complete.</b><br>Redirecting...<script>setTimeout(()=>{location.href='/'} ,500);</script>");
-        }
-    );
-    server.on("/upload_gif", HTTP_POST, 
-        [](AsyncWebServerRequest *request){},
-        [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
-            handleUpload(request, filename, index, data, len, final);
-            if(final)
-                request->send(200, "text/html", "<b>Upload complete.</b><br>Redirecting...<script>setTimeout(()=>{location.href='/'} ,500);</script>");
-        }
-    );
-    server.on("/upload_resource", HTTP_POST, 
-        [](AsyncWebServerRequest *request){},
-        [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
-            handleUpload(request, filename, index, data, len, final);
-            if(final)
-                request->send(200, "text/html", "<b>Upload complete.</b><br>Redirecting...<script>setTimeout(()=>{location.href='/resource'} ,500);</script>");
-        }
-    );
+    server.on("/upload_boot", HTTP_POST, handleUpload, handleUpload);
+    server.on("/upload_jpg", HTTP_POST, handleUpload, handleUpload);
+    server.on("/upload_gif", HTTP_POST, handleUpload, handleUpload);
 
     // Delete handlers
     server.on("/delete_boot", HTTP_POST, handleDelete);
     server.on("/delete_gallery", HTTP_POST, handleDelete);
-    server.on("/delete_resource", HTTP_POST, handleDelete);
 
     // Display random image(s)
     server.on("/display_random", HTTP_POST, handleDisplayRandom);
@@ -129,16 +91,6 @@ void FileMan::begin(AsyncWebServer& server) {
 String buildFileManagerPage() {
     String html = _pageHeader;
     html += "<h1>File Manager</h1>";
-
-    // --- Insert FFat Space Usage ---
-    size_t total = FFat.totalBytes();
-    size_t used  = FFat.usedBytes();
-    size_t free  = total > used ? total - used : 0;
-    html += "<div style='font-size:1.1em; margin:12px 0;'>";
-    html += "Space Used: " + String(used / 1024) + " KB / " + String(total / 1024) + " KB";
-    html += " &mdash; Free: " + String(free / 1024) + " KB";
-    html += "</div>";
-
     html += listBootImageSection();
     html += listGallerySection();
     html += _pageFooter;
@@ -147,14 +99,14 @@ String buildFileManagerPage() {
 
 String listBootImageSection() {
     String html = "<div class='section'><h2>Change Boot Image or Animation</h2>";
-    File root = FFat.open("/boot");
+    File root = SD_MMC.open("/boot");
     bool hasBootImg = false;
     if (root) {
         File f = root.openNextFile();
         while (f) {
             String fn = f.name();
             if (fn.endsWith("boot.jpg") || fn.endsWith("boot.gif")) {
-                html += "<div>" + fn;
+                html += "<div><img src='/sd/boot?file=" + fn + "' style='max-width:140px;max-height:140px;'><br>" + fn;
                 html += "<form method='POST' action='/delete_boot'><input type='hidden' name='file' value='" + fn + "'>";
                 html += "<button type='submit'>Delete</button></form></div>";
                 hasBootImg = true;
@@ -176,7 +128,7 @@ String listGallerySection() {
 
     // JPGs
     html += "<div class='file-list'><strong>JPGs:</strong><br>";
-    File jpg = FFat.open("/jpg");
+    File jpg = SD_MMC.open("/jpg");
     bool hasJpg = false;
     if (jpg) {
         File f = jpg.openNextFile();
@@ -204,7 +156,7 @@ String listGallerySection() {
 
     // GIFs
     html += "<div class='file-list'><strong>GIFs:</strong><br>";
-    File gif = FFat.open("/gif");
+    File gif = SD_MMC.open("/gif");
     bool hasGif = false;
     if (gif) {
         File f = gif.openNextFile();
@@ -239,196 +191,127 @@ String listGallerySection() {
     return html;
 }
 
-// --- Resource Manager page builder [ADD] ---
-String buildResourceManagerPage() {
-    String html = _pageHeader;
-    html += "<h1>Resource Manager</h1>";
-
-    // Space info
-    size_t total = FFat.totalBytes();
-    size_t used  = FFat.usedBytes();
-    size_t free  = total > used ? total - used : 0;
-    html += "<div style='font-size:1.1em; margin:12px 0;'>";
-    html += "FFat Used: " + String(used / 1024) + " KB / " + String(total / 1024) + " KB";
-    html += " &mdash; Free: " + String(free / 1024) + " KB";
-    html += "</div>";
-
-    // List files in /resource
-    html += "<div class='section'><h2>Manage Resource Files</h2>";
-    File res = FFat.open("/resource");
-    bool hasResource = false;
-    if (res) {
-        File f = res.openNextFile();
-        while (f) {
-            String fn = f.name();
-            html += fn + " ";
-            html += "<form style='display:inline;' method='POST' action='/delete_resource'>";
-            html += "<input type='hidden' name='file' value='" + fn + "'>";
-            html += "<input type='hidden' name='folder' value='/resource'>";
-            html += "<button type='submit'>Delete</button></form>";
-            html += "<a href='/sd/resource?file=" + fn + "' target='_blank'>Download</a><br>";
-            hasResource = true;
-            f = res.openNextFile();
-        }
-        res.close();
-    }
-    if (!hasResource) html += "No resource files found.";
-    html += "<form method='POST' enctype='multipart/form-data' action='/upload_resource'>";
-    html += "<input type='file' name='upload' multiple required><button type='submit'>Upload</button></form></div>";
-
-    html += "<div style='margin:18px 0;'><a href='/'>Back to File Manager</a></div>";
-    html += _pageFooter;
-    return html;
-}
-
-// --- Serve FFat files for preview/download ---
-void serveFile(AsyncWebServerRequest *request) {
-    String type = request->url();
-    String file = request->arg("file");
+// --- Serve SD files for preview/download ---
+void serveFile() {
+    String type = _server->uri();
+    String file = _server->arg("file");
     String path;
     if (type == "/sd/boot") path = "/boot/" + file;
     else if (type == "/sd/jpg") path = "/jpg/" + file;
     else if (type == "/sd/gif") path = "/gif/" + file;
-    else if (type == "/sd/resource") path = "/resource/" + file;
     else {
-        request->send(404, "text/plain", "Invalid file type");
+        _server->send(404, "text/plain", "Invalid file type");
         return;
     }
-    File f = FFat.open(path);
+    File f = SD_MMC.open(path);
     if (!f) {
-        request->send(404, "text/plain", "File not found");
+        _server->send(404, "text/plain", "File not found");
         return;
     }
     String contentType = file.endsWith(".gif") ? "image/gif" : (file.endsWith(".jpg") ? "image/jpeg" : "application/octet-stream");
-    AsyncWebServerResponse *response = request->beginResponse(f, contentType, false);
-    request->send(response);
+    _server->streamFile(f, contentType);
     f.close();
 }
 
 // --- Handle upload (called both as request and upload handler) ---
-void handleUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
-    String url = request->url();
+void handleUpload() {
+    HTTPUpload& upload = _server->upload();
+    String url = _server->uri();
     String folder = "";
     String forceName = "";
 
     if (url == "/upload_boot") {
         folder = "/boot";
-        forceName = filename.endsWith(".gif") ? "boot.gif" : "boot.jpg";
+        forceName = upload.filename.endsWith(".gif") ? "boot.gif" : "boot.jpg";
     } else if (url == "/upload_jpg") {
         folder = "/jpg";
     } else if (url == "/upload_gif") {
         folder = "/gif";
-    } else if (url == "/upload_resource") {
-        folder = "/resource";
     } else {
         return;
     }
 
-    if (index == 0) {
+    if (upload.status == UPLOAD_FILE_START) {
         String targetPath = folder + "/";
-        targetPath += (forceName.length() ? forceName : filename);
+        targetPath += (forceName.length() ? forceName : upload.filename);
         uploadTargetPath = targetPath;
-        int lastSlash = targetPath.lastIndexOf('/');
-        if (lastSlash > 0) {
-            String dir = targetPath.substring(0, lastSlash);
-            if (!FFat.exists(dir.c_str())) {
-                FFat.mkdir(dir.c_str());
-            }
-        }
-        uploadFile = FFat.open(targetPath, FILE_WRITE);
+        uploadFile = SD_MMC.open(targetPath, FILE_WRITE);
         Serial.printf("[FileMan] Starting upload: %s\n", targetPath.c_str());
-    }
-    if (uploadFile) {
-        uploadFile.write(data, len);
-    }
-    if (final) {
-        if (uploadFile) uploadFile.close();
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+        if (uploadFile)
+            uploadFile.write(upload.buf, upload.currentSize);
+     } else if (upload.status == UPLOAD_FILE_END) {
+        if (uploadFile)
+            uploadFile.close();
         Serial.printf("[FileMan] Upload complete: %s\n", uploadTargetPath.c_str());
+        // Auto-redirect to main page after upload
+        _server->send(200, "text/html", "<b>Upload complete.</b><br>Redirecting...<script>setTimeout(()=>{location.href='/'},500);</script>");
     }
 }
 
-// --- Handle file delete (PATCHED for Serial debug & file/dir check) ---
-void handleDelete(AsyncWebServerRequest *request) {
-    String folder = request->arg("folder");
-    String file = request->arg("file");
+// --- Handle file delete ---
+void handleDelete() {
+    String folder = _server->arg("folder");
+    String file = _server->arg("file");
     String path = folder.length() > 0 ? folder + "/" + file : "/boot/" + file;
-
-    Serial.printf("[FileMan] Attempting to delete file: '%s'\n", path.c_str());
-
-    File test = FFat.open(path);
-    if (!test) {
-        Serial.printf("[FileMan] File not found: '%s'\n", path.c_str());
-        request->send(404, "text/html", "<b>File not found.</b><br><a href='/'>Back</a>");
-        return;
-    }
-    if (test.isDirectory()) {
-        Serial.printf("[FileMan] Path is a directory, not a file: '%s'\n", path.c_str());
-        request->send(400, "text/html", "<b>Cannot delete a directory this way.</b><br><a href='/'>Back</a>");
-        test.close();
-        return;
-    }
-    test.close();
-
-    if (FFat.remove(path)) {
-        Serial.printf("[FileMan] File deleted: '%s'\n", path.c_str());
-        request->send(200, "text/html", "<b>File deleted.</b><br><a href='/'>Back</a>");
+    if (SD_MMC.remove(path)) {
+        _server->send(200, "text/html", "<b>File deleted.</b><br><a href='/'>Back</a>");
     } else {
-        Serial.printf("[FileMan] Delete failed (not found or error): '%s'\n", path.c_str());
-        request->send(500, "text/html", "<b>Delete failed.</b><br><a href='/'>Back</a>");
+        _server->send(500, "text/html", "<b>Delete failed.</b><br><a href='/'>Back</a>");
     }
 }
 
 // --- Display random image on TFT (button handler) ---
-void handleDisplayRandom(AsyncWebServerRequest *request) {
+void handleDisplayRandom() {
     String imagePath = getRandomGalleryImagePath();
     if (imagePath.length() > 0) {
         ImageDisplay::displayImage(imagePath);
         Serial.printf("[FileMan] Displaying random image: %s\n", imagePath.c_str());
-        request->send(200, "text/html", "<b>Random image displayed on device!</b><br><a href='/'>Back</a>");
+        _server->send(200, "text/html", "<b>Random image displayed on device!</b><br><a href='/'>Back</a>");
     } else {
-        request->send(200, "text/html", "<b>No images found to display!</b><br><a href='/'>Back</a>");
+        _server->send(200, "text/html", "<b>No images found to display!</b><br><a href='/'>Back</a>");
     }
 }
 
-void handleDisplayRandomJpg(AsyncWebServerRequest *request) {
+void handleDisplayRandomJpg() {
     String imagePath = getRandomJpgImagePath();
     if (imagePath.length() > 0) {
         ImageDisplay::displayImage(imagePath);
         Serial.printf("[FileMan] Displaying random JPG: %s\n", imagePath.c_str());
-        request->send(200, "text/html", "<b>Random JPG displayed on device!</b><br><a href='/'>Back</a>");
+        _server->send(200, "text/html", "<b>Random JPG displayed on device!</b><br><a href='/'>Back</a>");
     } else {
-        request->send(200, "text/html", "<b>No JPG images found to display!</b><br><a href='/'>Back</a>");
-   }
+        _server->send(200, "text/html", "<b>No JPG images found to display!</b><br><a href='/'>Back</a>");
+    }
 }
 
-void handleDisplayRandomGif(AsyncWebServerRequest *request) {
+void handleDisplayRandomGif() {
     String imagePath = getRandomGifImagePath();
     if (imagePath.length() > 0) {
         ImageDisplay::displayImage(imagePath);
         Serial.printf("[FileMan] Displaying random GIF: %s\n", imagePath.c_str());
-        request->send(200, "text/html", "<b>Random GIF displayed on device!</b><br><a href='/'>Back</a>");
+        _server->send(200, "text/html", "<b>Random GIF displayed on device!</b><br><a href='/'>Back</a>");
     } else {
-        request->send(200, "text/html", "<b>No GIF images found to display!</b><br><a href='/'>Back</a>");
+        _server->send(200, "text/html", "<b>No GIF images found to display!</b><br><a href='/'>Back</a>");
     }
 }
 
-void handleSelectImage(AsyncWebServerRequest *request) {
-    String folder = request->arg("folder");
-    String file = request->arg("file");
+void handleSelectImage() {
+    String folder = _server->arg("folder");
+    String file = _server->arg("file");
     String imagePath = folder + "/" + file;
-    if (FFat.exists(imagePath)) {
+    if (SD_MMC.exists(imagePath)) {
         ImageDisplay::displayImage(imagePath);
         Serial.printf("[FileMan] Displaying selected image: %s\n", imagePath.c_str());
-        request->send(200, "text/html", "<b>Selected image displayed on device!</b><br><a href='/'>Back</a>");
+        _server->send(200, "text/html", "<b>Selected image displayed on device!</b><br><a href='/'>Back</a>");
     } else {
-        request->send(404, "text/html", "<b>File not found!</b><br><a href='/'>Back</a>");
+        _server->send(404, "text/html", "<b>File not found!</b><br><a href='/'>Back</a>");
     }
 }
 
 // --- Pick a random gallery image path from /jpg or /gif ---
 String getRandomGalleryImagePath() {
     std::vector<String> allImages;
-    File jpg = FFat.open("/jpg");
+    File jpg = SD_MMC.open("/jpg");
     if (jpg) {
         File f = jpg.openNextFile();
         while (f) {
@@ -440,7 +323,7 @@ String getRandomGalleryImagePath() {
         }
         jpg.close();
     }
-    File gif = FFat.open("/gif");
+    File gif = SD_MMC.open("/gif");
     if (gif) {
         File f = gif.openNextFile();
         while (f) {
@@ -461,7 +344,7 @@ String getRandomGalleryImagePath() {
 
 String getRandomJpgImagePath() {
     std::vector<String> jpgs;
-    File jpg = FFat.open("/jpg");
+    File jpg = SD_MMC.open("/jpg");
     if (jpg) {
         File f = jpg.openNextFile();
         while (f) {
@@ -482,7 +365,7 @@ String getRandomJpgImagePath() {
 
 String getRandomGifImagePath() {
     std::vector<String> gifs;
-    File gif = FFat.open("/gif");
+    File gif = SD_MMC.open("/gif");
     if (gif) {
         File f = gif.openNextFile();
         while (f) {

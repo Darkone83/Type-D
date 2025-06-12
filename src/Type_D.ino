@@ -9,323 +9,185 @@
 //     comminuty       //
 /////////////////////////
 
-#include <FS.h>
-#include <WebServer.h>
-#include <TFT_eSPI.h>
-#include <SD_MMC.h>
-#include <WiFiManager.h>
-#include <CST816S.h>
-#include <TJpg_Decoder.h>
-#include <AnimatedGIF.h>
-using fs::FS;
-
+#include <Arduino.h>
+#include "wifimgr.h"
+#include <FFat.h>
 #include "disp_cfg.h"
 #include "detect.h"
-#include "fwupd.h"
-#include "imagedisplay.h"
-#include "ui.h"
 #include "fileman.h"
-#include "cmd.h"
+#include "imagedisplay.h"
+#include "boot.h"
+#include <ESPAsyncWebServer.h>
 #include "espnow_receiver.h"
 #include "xbox_status.h"
-#include "sleepmgr.h"
+#include "ui.h"
+#include "ui_set.h"
+#include "ui_bright.h"
+#include "ui_about.h"
 
-// --- Globals ---
-TFT_eSPI tft = TFT_eSPI();
-CST816S touch(TOUCH_SDA, TOUCH_SCL, TOUCH_RST, TOUCH_INT);
-WiFiManager wm;
-AnimatedGIF gif;
-WebServer server(8080);
+#define WIFI_TIMEOUT 120
 
-extern String getRandomGalleryImagePath(); // From fileman.cpp
+LGFX tft;
+AsyncWebServer server80(80);
+AsyncWebServer server8080(8080);
 
-bool wifiSetupInProgress = false;
+bool nowConnected = WiFiMgr::isConnected();
+bool portalInfoShown = false;
 
-// Required by TJpgDec
-bool tft_jpg_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bitmap) {
-    tft.pushImage(x, y, w, h, bitmap);
-    return true;
+unsigned long lastStatusDisplay = 0;
+bool showingXboxStatus = false;
+XboxPacket lastXboxPacket;
+
+// -- Show WiFi Portal Info ONLY if portal is active (not connected) --
+void displayPortalInfo() {
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    tft.setTextDatum(MC_DATUM); // center text
+
+    tft.setTextSize(2);
+    tft.drawString("WiFi Portal Active", tft.width()/2, tft.height()/2 - 30);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setTextSize(2);
+    tft.drawString("Type D setup", tft.width()/2, tft.height()/2);
+    tft.drawString("IP: 192.168.4.1", tft.width()/2, tft.height()/2 + 16);
+    tft.setTextSize(1);
+    tft.drawString("Connect below to setup.", tft.width()/2, tft.height()/2 + 32);
 }
 
-// --- UI State Management ---
-enum UiState { UI_BOOT, UI_IMAGE, UI_MENU, UI_NO_IMAGES, UI_WIFI_SETUP, UI_BRIGHTNESS };
-UiState uiState = UI_BOOT;
-unsigned long bootStartTime = 0;
-const unsigned long BOOT_DISPLAY_DURATION = 2000;
-
-// --- Prototypes ---
-void showRandomImage();
-void showNoImagesFound(const String& ipAddr);
-void showWiFiManagerInfo();
-void restartWiFiManager();
-bool showBootScreen();
 
 void setup() {
     Serial.begin(115200);
     delay(200);
+    Serial.println("[Type D] Booting...");
 
-    ESPNOWReceiver::begin();
-
-    // --- Initialize Sleep Manager
-    SleepMgr::begin();   // << Ensure persistent sleep state is loaded
-
-    tft.begin();
-    tft.setRotation(DISP_ROTATION);
+    tft.init();
+    tft.setRotation(0);
     tft.fillScreen(TFT_BLACK);
 
+    ImageDisplay::begin(&tft);
+
+    if (!FFat.begin()) {
+        Serial.println("[Type D] FFat Mount Failed! Attempting to format...");
+        if (FFat.format()) {
+            Serial.println("[Type D] FFat format succeeded! Rebooting...");
+            delay(1000);
+            ESP.restart();
+        } else {
+            Serial.println("[Type D] FFat format FAILED! Halting.");
+            while (1) delay(100);
+        }
+    } else {
+        Serial.println("[Type D] FFat Mounted OK.");
+    }
+
+    // --- BOOT ANIMATION ---
+    bootShowScreen();
+
+    // ---- SPLASH TEXT ----
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextDatum(middle_center);
+    tft.setTextColor(TFT_GREEN, TFT_BLACK);
+    tft.setTextSize(3);
+    tft.drawString("Type D", tft.width() / 2, tft.height() / 2 - 18);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setTextSize(2);
+    tft.drawString(VERSION_TEXT, tft.width() / 2, tft.height() / 2 + 10);
+    delay(1500);
+
+    // ----------- PATCH START -----------
+    // WiFiMgr replaces WiFiManager
+    WiFiMgr::begin();
+    Serial.println("[Type D] WiFiMgr initialized.");
+
+    // If not connected, display portal info
+    if (!WiFiMgr::isConnected()) {
+        displayPortalInfo();
+    }
+    // ----------- PATCH END -------------
+
+    // --- Start detection and web server modules ---
+    Detect::begin();
+    server8080.begin();
+    FileMan::begin(server8080);
+    ESPNOWReceiver::begin();
     UI::begin(&tft);
 
-    if (!SD_MMC.begin()) {
-        Serial.println("SD_MMC Mount Failed!");
-    }
-    touch.begin();
+    Serial.printf("[Type D] Device ID: %d\n", Detect::getId());
 
-    TJpgDec.setJpgScale(1);
-    TJpgDec.setCallback(tft_jpg_output);
+    // --- Show a random image on WiFi success as well ---
+    ImageDisplay::displayRandomImage();
 
-    // --- Firmware Update on Boot ---
-    FWUpd::checkAndUpgrade();
-
-    // --- WiFiManager (120s timeout) ---
-    wm.setConfigPortalTimeout(120);
-
-    // --- Start WebServer and register FileMan routes ---
-    server.begin();
-    FileMan::begin(server);
-
-    server.on("/cmd", HTTP_GET, []() {
-    String codeStr = server.arg("code");
-    String arg = server.hasArg("arg") ? server.arg("arg") : "";
-    if (codeStr == "help") {
-        server.send(200, "text/plain", Cmd::help());
-        return;
-    }
-    if (codeStr.length() < 4) {
-        server.send(400, "text/plain", "Missing/invalid code");
-        return;
-    }
-    uint16_t code = strtol(codeStr.c_str(), nullptr, 16);
-    String result = Cmd::execute(code, arg);
-    server.send(200, "text/plain", result);
-    });
-
-    bootStartTime = millis();
-    bool bootShown = showBootScreen();
-    if (!bootShown) {
-        tft.fillScreen(TFT_BLACK);
-        tft.setTextDatum(MC_DATUM);
-        tft.setTextFont(4);
-        tft.setTextColor(TFT_WHITE, TFT_BLACK);
-        tft.drawString("Type D", tft.width() / 2, tft.height() / 2 - 24);
-        tft.setTextFont(2);
-        tft.drawString("Booting.....", tft.width() / 2, tft.height() / 2 + 16);
-    }
 }
+
+// Track WiFi connection state for debug and display logic
+bool wasConnected = false;
 
 void loop() {
-    // --- SleepMgr: Wake on tap ---
-    if (SleepMgr::isSleeping()) {
-        if (touch.available() && touch.data.gestureID == 5) { // Single tap
-            SleepMgr::wake();
-            UI::redrawActive();   // Add a helper to redraw the current UI/menu/image
-        } else {
-            delay(50);
-            return;  // While sleeping, don't process anything else
+
+    WiFiMgr::loop();
+    // --- Highest priority: About animation ---
+    if (ui_about_isActive()) {
+        ui_about_update();
+        return;
+    }
+
+    if (ui_bright_isVisible()) {
+        ui_bright_update();
+        return;
+    }
+    else if (UISet::isMenuVisible()) {
+        UISet::update();
+        return;
+    }
+    else {
+        UI::update();
+    }
+
+    if (!UI::isMenuVisible()) {
+        ImageDisplay::update();
+    }
+
+    bool nowConnected = WiFiMgr::isConnected();
+
+    if (nowConnected && !wasConnected) {
+        Serial.print("[Type D] ");
+        Serial.println(WiFiMgr::getStatus());
+        portalInfoShown = false;  // reset flag on connect
+    }
+
+    if (!nowConnected && wasConnected) {
+        Serial.println("[Type D] WiFi connection lost, entering portal mode.");
+        displayPortalInfo();
+        portalInfoShown = true;
+    }
+
+    if (!nowConnected && !wasConnected) {
+        if (!portalInfoShown) {
+            displayPortalInfo();
+            portalInfoShown = true;
         }
     }
 
-    // --- SleepMgr: Update inactivity timer ---
-    SleepMgr::update();
-    
-    // --- Handle touch events ---
-    if (touch.available()) {
-        // Enter menu from image/no-image/wifi-setup
-        if ((uiState == UI_IMAGE || uiState == UI_NO_IMAGES || uiState == UI_WIFI_SETUP) && touch.data.gestureID == DOUBLE_CLICK) {
-            uiState = UI_MENU;
-            UI::showMenu();
-        }
-        // Pass gestures to UI in menu mode
-        if (uiState == UI_MENU) {
-            UI::loop(touch.data.gestureID);
-        }
+    wasConnected = nowConnected;
+
+    // --- Prevent image updates if not connected ---
+    if (!nowConnected) return;
+
+    // --- Handle Xbox status overlay ---
+    if (ESPNOWReceiver::hasPacket()) {
+        lastXboxPacket = ESPNOWReceiver::getLatest();
+        xbox_status::show(&tft, lastXboxPacket);
+        lastStatusDisplay = millis();
+        showingXboxStatus = true;
     }
 
-    // --- Handle touch events ---
-    if (touch.available()) {
-        // Enter menu from image/no-image/wifi-setup
-        if ((uiState == UI_IMAGE || uiState == UI_NO_IMAGES || uiState == UI_WIFI_SETUP) && touch.data.gestureID == DOUBLE_CLICK) {
-            uiState = UI_MENU;
-            UI::showMenu();
-        }
-        // Main menu handling
-        if (uiState == UI_MENU) {
-            // Save old menu state
-            bool wasMenu = UI::menuVisible();
-            UI::loop(touch.data.gestureID);
-            // Detect if brightness menu was activated
-            if (!wasMenu && UI::brightnessMenuActive()) {
-                uiState = UI_BRIGHTNESS;
-            }
-        }
-        // Brightness menu handling
-        if (uiState == UI_BRIGHTNESS && touch.data.gestureID == 5) { // 5 = tap
-            UI::brightnessMenuLoop(touch.data.x, touch.data.y, true);
-        }
-    }
-
-    switch (uiState) {
-        case UI_BOOT: {
-            if (millis() - bootStartTime > BOOT_DISPLAY_DURATION) {
-                String imgPath = getRandomGalleryImagePath();
-                if (imgPath.length() > 0) {
-                    uiState = UI_IMAGE;
-                    ImageDisplay::displayImage(imgPath);
-                } else {
-                    // No images found; check if connected
-                    if (!WiFi.isConnected()) {
-                        if (!wifiSetupInProgress) {
-                            wifiSetupInProgress = true;
-                            uiState = UI_WIFI_SETUP;
-                            wm.startConfigPortal("TypeD-Setup");
-                            showWiFiManagerInfo();
-                        }
-                    } else {
-                        String ipAddr = WiFi.localIP().toString();
-                        uiState = UI_NO_IMAGES;
-                        showNoImagesFound(ipAddr);
-                    }
-                }
-            }
-            break;
-        }
-        case UI_WIFI_SETUP:
-            showWiFiManagerInfo();
-            // Check for WiFi connection
-            if (WiFi.isConnected()) {
-                wifiSetupInProgress = false;
-                String imgPath = getRandomGalleryImagePath();
-                if (imgPath.length() > 0) {
-                    uiState = UI_IMAGE;
-                    ImageDisplay::displayImage(imgPath);
-                    if (ESPNOWReceiver::hasPacket()) {
-                        XboxPacket status = ESPNOWReceiver::getLatest();
-                        xbox_status::show(&tft, status);
-                        delay(2000);
-                    }
-
-                } else {
-                    uiState = UI_NO_IMAGES;
-                    showNoImagesFound(WiFi.localIP().toString());
-                }
-            } else if (!wm.getConfigPortalActive()) {
-                showWiFiManagerInfo();
-            }
-            break;
-
-        case UI_IMAGE:
-            // Image is displayed; implement slideshow or transitions as desired
-            break;
-
-        case UI_MENU:
-            // UI handles menu logic; check if menu should exit
-            if (UI::shouldExitMenu()) {
-                UI::resetMenuExit();
-                String imgPath = getRandomGalleryImagePath();
-                if (imgPath.length() > 0) {
-                    uiState = UI_IMAGE;
-                    ImageDisplay::displayImage(imgPath);
-                } else {
-                    uiState = UI_NO_IMAGES;
-                    showNoImagesFound(WiFi.localIP().toString());
-                }
-            }
-            break;
-
-        case UI_NO_IMAGES:
-            // Show no images; can trigger WiFiManager again from UI/menu if you wish
-            break;
-
-        case UI_BRIGHTNESS:
-            // All touch/tap logic handled by UI::brightnessMenuLoop()
-            // When you add a "Back" button, you will set uiState = UI_MENU or whatever is appropriate
-            break;
-
-    }
-}
-
-// --- Utility Functions ---
-void showRandomImage() {
-    String imgPath = getRandomGalleryImagePath();
-    if (imgPath.length() == 0) {
-        String ipAddr;
-        if (WiFi.isConnected())
-            ipAddr = WiFi.localIP().toString();
-        else
-            ipAddr = WiFi.softAPIP().toString();
-        if (ipAddr.length() > 0)
-            showNoImagesFound(ipAddr);
-        else {
-            uiState = UI_WIFI_SETUP;
-            wifiSetupInProgress = true;
-            wm.startConfigPortal("TypeD-Setup");
-            showWiFiManagerInfo();
+    if (showingXboxStatus) {
+        if (millis() - lastStatusDisplay > 2000) {
+            showingXboxStatus = false;
+            ImageDisplay::displayRandomImage();
         }
         return;
     }
-    ImageDisplay::displayImage(imgPath);
-}
 
-void showNoImagesFound(const String& ipAddr) {
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextFont(4);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.drawString("No images found", tft.width()/2, tft.height()/2 - 32);
-    tft.setTextFont(2);
-    tft.drawString(ipAddr, tft.width()/2, tft.height()/2);
-    tft.drawString("Please upload images", tft.width()/2, tft.height()/2 + 32);
-}
-
-void showWiFiManagerInfo() {
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextFont(4);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.drawString("WiFi Setup", tft.width()/2, tft.height()/2 - 34);
-    tft.setTextFont(2);
-    tft.drawString("SSID: TypeD-Setup", tft.width()/2, tft.height()/2);
-    tft.drawString("IP: " + WiFi.softAPIP().toString(), tft.width()/2, tft.height()/2 + 20);
-    tft.drawString("Connect & upload images", tft.width()/2, tft.height()/2 + 44);
-}
-
-void restartWiFiManager() {
-    wm.setConfigPortalTimeout(120);
-    wifiSetupInProgress = true;
-    uiState = UI_WIFI_SETUP;
-    wm.startConfigPortal("TypeD-Setup");
-    showWiFiManagerInfo();
-}
-
-bool showBootScreen() {
-    if (SD_MMC.exists("/boot/boot.jpg")) {
-        uint16_t jpgWidth, jpgHeight;
-        if (TJpgDec.getJpgSize(&jpgWidth, &jpgHeight, "/boot/boot.jpg") == 0) {
-            int x = (TFT_WIDTH - jpgWidth) / 2;
-            int y = (TFT_HEIGHT - jpgHeight) / 2;
-            TJpgDec.drawSdJpg(x, y, "/boot/boot.jpg");
-            return true;
-        }
-    }
-    if (SD_MMC.exists("/boot/boot.gif")) {
-        if (gif.open("/boot/boot.gif",
-            ImageDisplay::GIFOpenFile,
-            ImageDisplay::GIFCloseFile,
-            ImageDisplay::GIFReadFile,
-            ImageDisplay::GIFSeekFile,
-            ImageDisplay::gifDraw)) {
-            ImageDisplay::gifBootActive = true;
-            return true;
-        }
-    }
-    return false;
+    ImageDisplay::update();
 }

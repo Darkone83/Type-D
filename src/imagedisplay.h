@@ -1,41 +1,48 @@
 #pragma once
 
 #include <Arduino.h>
-#include <TFT_eSPI.h>
-#include <SD_MMC.h>
-#include <TJpg_Decoder.h>
-#include <AnimatedGIF.h>
+#include <vector>
+
+class LGFX;
 
 namespace ImageDisplay {
+    
+    extern bool paused;
+    void setPaused(bool p);
 
-    enum Mode {
-        MODE_RANDOM,
-        MODE_JPG,
-        MODE_GIF
-    };
+enum Mode {
+    MODE_RANDOM,
+    MODE_JPG,
+    MODE_GIF
+};
 
-    extern bool gifBootActive;
+void begin(LGFX* tft);
 
-    void begin(TFT_eSPI* tft);
-    void setMode(Mode m);
-    Mode getMode();
-    void refreshFileLists();
-    void displayImage(const String& path);
-    void displayRandomImage();
-    void displayRandomJpg();
-    void displayRandomGif();
-    void nextImage();
-    void prevImage();
-    void loop();
-    void showIdle();
-    void clear();
-    void gifDraw(GIFDRAW* pDraw);
-    void* GIFOpenFile(const char* fname, int32_t* pSize);
-    void GIFCloseFile(void* handle);
-    int32_t GIFReadFile(GIFFILE* pFile, uint8_t* pBuf, int32_t iLen);
-    int32_t GIFSeekFile(GIFFILE* pFile, int32_t iPosition);
+void setMode(Mode m);
+Mode getMode();
 
-    // --- PATCH: Add update() declaration for auto-advance logic in random mode
-    void update();
+void refreshFileLists();
+
+void displayImage(const String& path);
+void displayRandomImage();
+void displayRandomJpg();
+void displayRandomGif();
+
+void nextImage();
+void prevImage();
+
+void loop();
+void update();
+void clear();
+void showIdle();
+
+const std::vector<String>& getJpgList();
+const std::vector<String>& getGifList();
+
+// These are now file-static, not global; you do NOT need to use them directly outside the implementation
+// void* GIFOpenRAM(const char*, int32_t*, void* userData);
+// void GIFCloseRAM(void* handle);
+// int32_t GIFReadRAM(GIFFILE* pFile, uint8_t* pBuf, int32_t iLen);
+// int32_t GIFSeekRAM(GIFFILE* pFile, int32_t iPosition);
 
 } // namespace ImageDisplay

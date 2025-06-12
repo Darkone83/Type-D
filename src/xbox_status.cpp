@@ -1,9 +1,9 @@
-// xbox_status.cpp
 #include "xbox_status.h"
-#include <TJpg_Decoder.h>
-#include <TFT_eSPI.h>
+#include <FFat.h>                // Use FFat for file access
+#include "disp_cfg.h"
 
-void drawShadowedText(TFT_eSPI* tft, const String& text, int x, int y, uint16_t color, uint16_t shadow, int font) {
+// Ported shadowed text helper
+void drawShadowedText(LGFX* tft, const String& text, int x, int y, uint16_t color, uint16_t shadow, int font) {
     tft->setTextFont(font);
     tft->setTextColor(shadow, TFT_BLACK);
     tft->drawString(text, x+2, y+2);
@@ -13,17 +13,16 @@ void drawShadowedText(TFT_eSPI* tft, const String& text, int x, int y, uint16_t 
 
 namespace xbox_status {
 
-void show(TFT_eSPI* tft, const XboxPacket& packet) {
+void show(LGFX* tft, const XboxPacket& packet) {
     tft->fillScreen(TFT_BLACK);
 
     const int iconSize = 32;
-    const int rowH = 48; // Space between each status row
+    const int rowH = 48;
     const int startY = 8;
     const int iconX = 8;
-    const int labelX = iconX + iconSize + 8;   // Icon + margin
-    const int valueX = labelX + 80;            // Label + margin (adjust as needed)
+    const int labelX = iconX + iconSize + 8;
+    const int valueX = labelX + 80;
 
-    // Colors
     uint16_t labelCol = TFT_LIGHTGREY;
     uint16_t valueCol = 0x07E0; // Xbox green
 
@@ -40,11 +39,28 @@ void show(TFT_eSPI* tft, const XboxPacket& packet) {
 
     for (int i = 0; i < 4; ++i) {
         int y = startY + i * rowH;
-        // Draw icon at left
-        TJpgDec.drawSdJpg(iconX, y, rows[i].icon);
 
-        // Vertically center text with icon: font 4 is ~24px tall
-        int textY = y + (iconSize / 2) - 12; // -12 for font baseline
+        // --- PORTING: Replace SD card JPG drawing with FFat loading ---
+        File iconFile = FFat.open(rows[i].icon, "r");
+        if (iconFile && iconFile.size() > 0) {
+            size_t jpgSize = iconFile.size();
+            uint8_t* jpgBuffer = (uint8_t*)heap_caps_malloc(jpgSize, MALLOC_CAP_SPIRAM);
+            if (jpgBuffer) {
+                int bytesRead = iconFile.read(jpgBuffer, jpgSize);
+                iconFile.close();
+                if ((size_t)bytesRead == jpgSize) {
+                    tft->drawJpg(jpgBuffer, jpgSize, iconX, y, iconSize, iconSize);
+                }
+                heap_caps_free(jpgBuffer);
+            } else {
+                iconFile.close();
+            }
+        } else {
+            if (iconFile) iconFile.close();
+            // Optionally draw a blank or error icon here
+        }
+
+        int textY = y + (iconSize / 2) - 12;
         drawShadowedText(tft, rows[i].label, labelX, textY, labelCol, TFT_DARKGREY, 4);
         drawShadowedText(tft, rows[i].value, valueX, textY, valueCol, TFT_DARKGREY, 4);
     }
