@@ -78,8 +78,14 @@ _Install these via Arduino Library Manager or from their GitHub releases:_
    **Notes:**
    - If no gallery images are present, a “No images found” screen will be shown.
    - File types supported are determined by firmware: common formats are `.jpg`,`.gif` (for UI assets).
-   - Resource files should use names expected by your UI/menu code. you can access the resource uploader by going to device=ip:8080/resource. All required resrouces are in the FATFS Setup/resource folder.
+   - Resource files should use names expected by your UI/menu code. You can access the resource uploader by going to device=ip:8080/resource. All required resources are in the FATFS Setup/resource folder.
    - Large image files may affect load speed; optimize/resize for best results.
+
+## GIF Conversion
+
+Use the script in the scripts folder to properly format your GIFS
+
+Usage: gif_convert.py mygif.gif cool.gif
 
 ## Hardware installation
 
