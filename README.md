@@ -25,6 +25,12 @@
 
 **Amazon** <a href="https://www.amazon.com/dp/B0DLNMG2KP?ref=ppx_yo2ov_dt_b_fed_asin_title">1.28 inch ESP32-Development board</a>
 
+- **Mini MP1584EN DC-DC Buck Converter**
+
+**AliExpress** <a href="https://www.aliexpress.us/item/3256806449390797.html?spm=a2g0o.productlist.main.2.f7fcy2BDy2BDki&algo_pvid=10c0af7b-9a6d-49d9-b32b-322befa53be9&algo_exp_id=10c0af7b-9a6d-49d9-b32b-322befa53be9-1&pdp_ext_f=%7B%22order%22%3A%2295%22%2C%22eval%22%3A%221%22%7D&pdp_npi=4%40dis%21USD%214.15%211.45%21%21%2129.64%2110.37%21%402101c5b117497898902221210e8f47%2112000037986957162%21sea%21US%21196794698%21X&curPageLogUid=EvPienUVOVgU&utparam-url=scene%3Asearch%7Cquery_from%3A">Mini MP1584EN DC-DC Buck Converter</a>
+
+**Amazon** <a href="https://www.amazon.com/dp/B01MQGMOKI?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1">Mini MP1584EN DC-DC Buck Converter</a>
+
 - **Mounting Screws** 4 2x10 mm pan head screws
 
 - **Type S** Drill guide, and bezel plate (Coming soon!)
