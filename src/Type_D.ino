@@ -24,8 +24,11 @@
 #include "ui_set.h"
 #include "ui_bright.h"
 #include "ui_about.h"
+#include <Preferences.h>
 
 #define WIFI_TIMEOUT 120
+#define BRIGHTNESS_PREF_KEY "brightness"
+#define BRIGHTNESS_PREF_NS "type_d"
 
 LGFX tft;
 AsyncWebServer server80(80);
@@ -38,6 +41,22 @@ unsigned long lastStatusDisplay = 0;
 bool showingXboxStatus = false;
 XboxPacket lastXboxPacket;
 
+
+static int percent_to_hw(int percent) {
+    if (percent < 5) percent = 5;
+    if (percent > 100) percent = 100;
+    return ((percent * 255) / 100);
+}
+
+void apply_brightness_on_boot() {
+    Preferences prefs;
+    prefs.begin(BRIGHTNESS_PREF_NS, true); // read-only
+    int brightness = prefs.getUInt(BRIGHTNESS_PREF_KEY, 100); // default 100%
+    prefs.end();
+    if (brightness < 5) brightness = 5;
+    if (brightness > 100) brightness = 100;
+    tft.setBrightness(percent_to_hw(brightness));
+}
 // -- Show WiFi Portal Info ONLY if portal is active (not connected) --
 void displayPortalInfo() {
     tft.fillScreen(TFT_BLACK);
@@ -62,6 +81,7 @@ void setup() {
 
     tft.init();
     tft.setRotation(0);
+    apply_brightness_on_boot();
     tft.fillScreen(TFT_BLACK);
 
     ImageDisplay::begin(&tft);
