@@ -131,7 +131,7 @@ ___
 
 ## Special Thanks
 
-- Andr0, Team Resurgent, Xbox Scene, and the Xbox modding community
+- Andr0, Team Resurgent, Cat-Pog-Real (STL Design), Xbox Scene, and the Xbox modding community
 
 ---
 
