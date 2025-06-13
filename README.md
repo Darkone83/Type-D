@@ -18,7 +18,7 @@
 
 ## Required Hardware
 
-- **Type D Display**: ESP32-S3 module (recommended: ESP32-S3 + 240x240 TFT round GC9A01 display + CST816S touch panel + SD card support)
+- **Type D Display**: ESP32 module (recommended: ESP32 + 240x240 TFT round GC9A01 display + CST816S touch panel + SD card support)
 
 **AliExpress** <a href="https://www.aliexpress.us/item/3256805458117676.html?spm=a2g0o.order_list.order_list_main.5.38db18023gODs6&gatewayAdapt=glo2usa">ESP32-TXT 1.28 inch display</a>
 
@@ -47,7 +47,7 @@ _Install these via Arduino Library Manager or from their GitHub releases:_
 
 #### Build Instructions
 1. **Install Arduino IDE** (recommended 2.x or later).
-2. **Install the ESP32 board package** via Board Manager, and select your ESP32-S3 board.
+2. **Install the ESP32 board package**
 3. **Install all required libraries** (see above).
 4. **Setup board and options** Board** ESP32 Dev module, Flash size: 16MB, Partition Scheme: 16MB Flash (2MB APP/12.5MB FATFS), PSRAM: Enabled
 5. **Open the `Type_D.ino` project** and verify it compiles.
