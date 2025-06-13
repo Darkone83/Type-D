@@ -87,5 +87,3 @@ uint8_t myId = Detect::getId();
 - Use `Detect::getId()` whenever you need your assigned unique device ID in your application logic.
 
 ---
-
-*This documentation matches your actual `detect.h` and `detect.cpp` source. For any custom logic, timing, or protocol changes, refer to the source code or request more detail here.*
