@@ -8,7 +8,6 @@
 
 ### Type D Display Firmware
 
-- Smart round TFT display for the Xbox jewel  
 - Animated boot screen from `/boot/boot.jpg` or `/boot/boot.gif`  
 - Image & GIF slideshow: Will select a random image on boot and process through them
 - Touchscreen Xbox-style menu:    
