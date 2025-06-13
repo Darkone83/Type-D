@@ -7,6 +7,7 @@
 #include <LovyanGFX.hpp>
 #include "esp_heap_caps.h"
 #include "disp_cfg.h"
+#include <WiFi.h>
 
 class LGFX;
 
@@ -34,6 +35,38 @@ struct RAMGIFHandle {
     size_t pos;
 };
 static RAMGIFHandle* s_gifHandle = nullptr;
+
+void drawNoImagesMessage(LGFX* tft) {
+    tft->fillScreen(TFT_BLACK);
+
+    String mainMsg = "Please upload your images";
+    String ipMsg = "http://" + WiFi.localIP().toString() + ":8080";
+    String footer = "Ya No0b!";
+
+    uint16_t w, h;
+    tft->setTextColor(TFT_WHITE, TFT_BLACK);
+
+    // Main message
+    tft->setTextSize(2);
+    w = tft->textWidth(mainMsg);
+    h = tft->fontHeight();
+    tft->setCursor((tft->width() - w)/2, tft->height()/2 - 30);
+    tft->print(mainMsg);
+
+    // IP/port
+    tft->setTextSize(2);
+    w = tft->textWidth(ipMsg);
+    h = tft->fontHeight();
+    tft->setCursor((tft->width() - w)/2, tft->height()/2);
+    tft->print(ipMsg);
+
+    // Footer small, near bottom
+    tft->setTextSize(1);
+    w = tft->textWidth(footer);
+    h = tft->fontHeight();
+    tft->setCursor((tft->width() - w)/2, tft->height() - h - 8);
+    tft->print(footer);
+}
 
 // --- Utility: Always free GIF RAM handle/buffer safely ---
 static void freeRamGifHandle() {
@@ -188,7 +221,6 @@ void displayImage(const String& path) {
             if (jpgFile) jpgFile.close();
         }
     } else if (lower.endsWith(".gif")) {
-        Serial.printf("[ImageDisplay] Loading GIF: %s\n", path.c_str());
         File f = FFat.open(path, "r");
         if (f && f.size() > 0) {
             size_t gifSize = f.size();
@@ -242,6 +274,7 @@ void displayRandomImage() {
     for (auto& f : gifList) randomStack.push_back(f);
     if (randomStack.empty()) {
         Serial.println("[ImageDisplay] No images to display.");
+        if (_tft) drawNoImagesMessage(_tft);
         return;
     }
     std::random_shuffle(randomStack.begin(), randomStack.end());

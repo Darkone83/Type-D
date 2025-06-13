@@ -76,6 +76,6 @@ public:
 #define DISP_HEIGHT 240
 
 // Version
-static constexpr char VERSION_TEXT[] = "v0.5.2 Beta";
+static constexpr char VERSION_TEXT[] = "v0.6 Beta";
 
 #endif // DISP_CFG_H

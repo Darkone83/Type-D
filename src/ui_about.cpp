@@ -152,6 +152,14 @@ void ui_about_update() {
     // --- Fade to black
     about_fadeToBlack();
 
+        // --- Show /resource/TD.jpg ---
+    about_drawImageCentered("/resource/TD.jpg");
+    tft.setTextColor(COLOR_WHITE, TFT_BLACK);
+    delay(4000);
+
+    // --- Fade to black
+    about_fadeToBlack();
+
     // --- Return to menu ---
     aboutActive = false;
     UI::showMenu();

@@ -25,6 +25,7 @@
 #include "ui_bright.h"
 #include "ui_about.h"
 #include <Preferences.h>
+#include "cmd.h"
 
 #define WIFI_TIMEOUT 120
 #define BRIGHTNESS_PREF_KEY "brightness"
@@ -129,6 +130,7 @@ void setup() {
     Detect::begin();
     server8080.begin();
     FileMan::begin(server8080);
+    cmd_init(&server8080, &tft);
     ESPNOWReceiver::begin();
     UI::begin(&tft);
 
@@ -210,4 +212,5 @@ void loop() {
     }
 
     ImageDisplay::update();
+    cmd_serial_poll();
 }
