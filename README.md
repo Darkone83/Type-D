@@ -12,7 +12,8 @@
 - Animated boot screen from `/boot/boot.jpg` or `/boot/boot.gif`  
 - Image & GIF slideshow: Will select a random image on boot and process through them
 - Touchscreen Xbox-style menu:    
-  - Adjust brightness    
+  - Adjust brightness
+  - View current WiFi information    
   - Initiate WiFi setup or reset WiFi credentials  
 - Web interface: Upload and manage gallery images over WiFi  
 
@@ -23,6 +24,18 @@
 **AliExpress** <a href="https://www.aliexpress.us/item/3256805458117676.html?spm=a2g0o.order_list.order_list_main.5.38db18023gODs6&gatewayAdapt=glo2usa">ESP32-TXT 1.28 inch display</a>
 
 **Amazon** <a href="https://www.amazon.com/dp/B0DLNMG2KP?ref=ppx_yo2ov_dt_b_fed_asin_title">1.28 inch ESP32-Development board</a>
+
+- **Mounting Screws** 4 2x10 mm pan head screws
+
+- **Type S** Drill guide, and bezel plate (Coming soon!)
+
+- **Duke** Cutting template, and support plate (Coming soon!)
+
+## Purchasing
+
+- **Full kit** Darkone Customs (Coming soon!)
+
+- **Display with bezels** Darkone Customs (Coming soon!)
 
 
 ---
