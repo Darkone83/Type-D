@@ -215,4 +215,5 @@ void loop() {
 
     ImageDisplay::update();
     cmd_serial_poll();
+    Detect::loop();
 }
