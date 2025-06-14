@@ -4,7 +4,7 @@
 
 #include <Arduino.h>
 #include "CST816S.h"
-#include "disp_cfg.h"
+#include "disp_cfg.h"  // For I2C and display definitions
 
 namespace UI {
     void begin(LGFX* tft);

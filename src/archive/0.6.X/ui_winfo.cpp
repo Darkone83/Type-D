@@ -62,6 +62,7 @@ void ui_winfo_update() {
 
     if (touch.available()) {
         const data_struct& d = touch.data;
+        Serial.printf("[ui_winfo_update] gesture: %u event: %u x:%d y:%d\n", d.gestureID, d.event, d.x, d.y);
 
         if ((d.gestureID == SINGLE_CLICK || d.gestureID == NONE) && d.event == 0) {
             int backW = 120, backH = 38, backX = 60, backY = 180;
@@ -71,6 +72,8 @@ void ui_winfo_update() {
                 menuVisible = false;
                 UISet::begin(&tft);
                 delay(400);
+            } else {
+                Serial.printf("[ui_winfo_update] Touch was outside buttons: x=%d y=%d\n", d.x, d.y);
             }
         }
     }

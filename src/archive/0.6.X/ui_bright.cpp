@@ -2,7 +2,7 @@
 #include "disp_cfg.h"
 #include <Arduino.h>
 #include <Preferences.h>
-#include "ui_set.h"
+#include "ui_set.h" // For returning to settings menu
 
 extern LGFX tft;
 extern CST816S touch;
@@ -94,6 +94,7 @@ void ui_bright_update() {
 
     if (touch.available()) {
         const data_struct& d = touch.data;
+        Serial.printf("[ui_bright_update] gesture: %u event: %u x:%d y:%d\n", d.gestureID, d.event, d.x, d.y);
 
         if ((d.gestureID == SINGLE_CLICK || d.gestureID == NONE) && d.event == 0) {
             int btnW = 180, btnH = 56, btnX = 30, btnY = 80;
@@ -113,6 +114,7 @@ void ui_bright_update() {
                 UISet::begin(&tft);
                 delay(400);
             } else {
+                Serial.printf("[ui_bright_update] Touch was outside buttons: x=%d y=%d\n", d.x, d.y);
             }
         }
     }

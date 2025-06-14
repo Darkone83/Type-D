@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 
+// Main API for WiFiMgr
 namespace WiFiMgr {
     void begin();
     void loop();

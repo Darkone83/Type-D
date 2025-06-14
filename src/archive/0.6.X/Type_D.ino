@@ -26,7 +26,6 @@
 #include "ui_about.h"
 #include <Preferences.h>
 #include "cmd.h"
-#include "diag.h"
 
 #define WIFI_TIMEOUT 120
 #define BRIGHTNESS_PREF_KEY "brightness"
@@ -118,6 +117,7 @@ void setup() {
     tft.drawString(VERSION_TEXT, tft.width() / 2, tft.height() / 2 + 10);
     delay(1500);
 
+    // ----------- PATCH START -----------
     // WiFiMgr replaces WiFiManager
     WiFiMgr::begin();
     Serial.println("[Type D] WiFiMgr initialized.");
@@ -126,12 +126,12 @@ void setup() {
     if (!WiFiMgr::isConnected()) {
         displayPortalInfo();
     }
+    // ----------- PATCH END -------------
 
     // --- Start detection and web server modules ---
     Detect::begin();
     server8080.begin();
     FileMan::begin(server8080);
-    Diag::begin(server8080);
     cmd_init(&server8080, &tft);
     ESPNOWReceiver::begin();
     UI::begin(&tft);

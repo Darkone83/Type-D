@@ -240,6 +240,7 @@ void displayImage(const String& path) {
             Serial.println("[ImageDisplay] PSRAM alloc failed!");
         }
     } else if (lower.endsWith(".gif")) {
+        Serial.printf("[ImageDisplay] Loading GIF: %s\n", path.c_str());
         File f = FFat.open(path, "r");
         if (!f || f.size() == 0) {
             Serial.printf("[ImageDisplay] GIF missing or empty: %s\n", path.c_str());
@@ -269,6 +270,7 @@ void displayImage(const String& path) {
                     if (gif.getLoopCount() > startLoop) break;
                 }
                 gif.close();
+                Serial.println("[ImageDisplay] GIF playback finished");
                 freeRamGifHandle();
                 currentIsGif = false;
             } else {

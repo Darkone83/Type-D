@@ -262,8 +262,8 @@ void loop() {
     if (state == State::CONNECTING) {
         if (WiFi.status() == WL_CONNECTED) {
             state = State::CONNECTED;
-            dnsServer.stop();
-            WiFi.softAPdisconnect(true);
+            dnsServer.stop();              // ✅ Stop DNS hijack
+            WiFi.softAPdisconnect(true);   // ✅ Tear down captive AP
                 Serial.println("[WiFiMgr] WiFi connected.");
                 Serial.print("[WiFiMgr] IP Address: ");
                 Serial.println(WiFi.localIP());  

@@ -3,8 +3,7 @@
 #include <Arduino.h>
 #include "imagedisplay.h"
 #include "wifimgr.h"
-#include "ui_bright.h"
-#include <Preferences.h>
+// Include your brightness module as needed
 
 
 static LGFX* s_tft = nullptr;
@@ -117,18 +116,9 @@ static void execute_cmd(uint8_t code, AsyncWebServerRequest* request, Stream* se
             ImageDisplay::clear();
             break;
         case CMD_BRIGHTNESS_SET:
-             if (val >= 5 && val <= 100) {
-                // Set brightness in hardware and preferences just like ui_bright
-                int hwval = (val * 255) / 100;
-                if (s_tft) s_tft->setBrightness(hwval);
-
-                // Also update the saved setting in preferences (persist)
-                Preferences prefs;
-                prefs.begin("type_d", false); // read-write mode
-                prefs.putUInt("brightness", val);
-                prefs.end();
-
-                Serial.printf("[cmd] Set brightness to %d%% (raw %d)\n", val, hwval);
+            if (val >= 5 && val <= 100) {
+                // TODO: call your brightness set function here!
+                Serial.printf("[cmd] Would set brightness to %d\n", val);
             }
             break;
         case CMD_WIFI_RESTART:
