@@ -41,7 +41,7 @@
 
 - **Full kit** Darkone Customs (Coming soon!)
 
-- **Display with bezels** Darkone Customs (Coming soon!)
+- **Display with bezels** <a href="https://www.darkonecustoms.com/store/p/type-d-screen-kit">Darkone Customs</a>
 
 
 ---
