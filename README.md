@@ -181,6 +181,10 @@ Usage: gif_convert.py mygif.gif cool.gif
 
 Coming Soon!
 
+## WiFi Connection:
+
+Set up your WiFi by joining the Type D setup wifi network that Type D broadcasts. Join your preferred network and access the file manager to upload your content with the built in filemanager Http://<your IP>:8080
+
 
 ## 🗺️ Navigation & Menu Tree
 
