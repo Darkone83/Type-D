@@ -222,6 +222,10 @@ Set up your WiFi by joining the Type D setup wifi network that Type D broadcasts
 
 ---
 
+## Diagnostics
+
+You can access the diagnotsic page once you have connected to wifi by visiting HTTP://<device IP>:8080/diag
+
 ## Notes
 
 - GIF support is experimental! Keep your GIF's under 1MB. Larger GIF's may work, but cause crashing of the firmware.
