@@ -1,5 +1,12 @@
 # Type D: Original Xbox TFT Display Project
 
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/logo.jpg">
+
+  
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Types1.png"><img src="https://github.com/Darkone83/Type-D/blob/main/images/Types2.png">
+</div>
+
 **Type D** is a two-part open-source system for the original Xbox, bringing a modern, customizable, and fully themed display experience to your console. It replaces the stock jewel with a 240x240 TFT touch display, controlled by an ESP32-S3, and optionally pairs with the Type D Expansion module for live Xbox status telemetry.
 
 ---
@@ -23,12 +30,6 @@
 **AliExpress** <a href="https://www.aliexpress.us/item/3256805458117676.html?spm=a2g0o.order_list.order_list_main.5.38db18023gODs6&gatewayAdapt=glo2usa">ESP32-TXT 1.28 inch display</a>
 
 **Amazon** <a href="https://www.amazon.com/dp/B0DLNMG2KP?ref=ppx_yo2ov_dt_b_fed_asin_title">1.28 inch ESP32-Development board</a>
-
-- **Mini MP1584EN DC-DC Buck Converter**
-
-**AliExpress** <a href="https://www.aliexpress.us/item/3256806449390797.html?spm=a2g0o.productlist.main.2.f7fcy2BDy2BDki&algo_pvid=10c0af7b-9a6d-49d9-b32b-322befa53be9&algo_exp_id=10c0af7b-9a6d-49d9-b32b-322befa53be9-1&pdp_ext_f=%7B%22order%22%3A%2295%22%2C%22eval%22%3A%221%22%7D&pdp_npi=4%40dis%21USD%214.15%211.45%21%21%2129.64%2110.37%21%402101c5b117497898902221210e8f47%2112000037986957162%21sea%21US%21196794698%21X&curPageLogUid=EvPienUVOVgU&utparam-url=scene%3Asearch%7Cquery_from%3A">Mini MP1584EN DC-DC Buck Converter</a>
-
-**Amazon** <a href="https://www.amazon.com/dp/B01MQGMOKI?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1">Mini MP1584EN DC-DC Buck Converter</a>
 
 - **Mounting Screws** 4 2x10 mm pan head screws
 
@@ -88,14 +89,97 @@ Usage: gif_convert.py mygif.gif cool.gif
 
 ## Hardware installation
 
-## Type D display
+### Display Preparation
+
+1 **Solder jumper** You will need to solder the jumper pad to the leg directly next to it to bypass the power button. See the Image below for reference.
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Board%20prep/Jumper%20location.png">
+</div>
+
+2 **Locate power**: Reference the image below for positive and negative terminals. Pre-tin the negative pad with a bit of flux and decent solder.
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Board%20prep/Posneg.png">
+</div>
+
+3 ** Install power wires** Trim your leads as short as possible and solder your positive and negative conductors. Silicone sheathed wire is recommended for routing and flexibility.
+<div align=center>
+  
+  Zoomed in:
+
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Board%20prep/Wire%20Zoom.png">
+
+  Zoomed out:
+
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Board%20prep/Wire%20zoum%20out.png">
+</div>
+
+4 **Install Bezel** Peel the release paper from the screen and adhere it to the bezel
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Board%20prep/Bezel.png">
+</div>
 
 ### Type S:
-TODO
+
+**Notice** Beyond this point, you will be physically modifying your controller. This is not reversible, as you will have to drill holes in your shell. It's strongly advised you use a shell that you're potentially alright with modifying.
+
+**Required** You will need the <a href="https://github.com/Darkone83/Type-D/blob/main/stl/Type%20S%20Drill%20guide.stl">Type S drill guide</a> and the <a href="https://github.com/Darkone83/Type-D/blob/main/stl/Type%20S%20Bezel.stl">Type S Bezel</a>. You can asso use the optional <a href="https://github.com/Darkone83/Type-D/blob/main/stl/Washer.stl">washer</a> if needed.
+
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/Type%20S%20Kit.png">
+</div>
+
+1 **Remove jewel** Remove your jewel with a spudger or soft tool
+<div align=center>
+  Before:
+
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/Controller%20Front.png">
+
+  After:
+
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/Controller%20Front%20No%20Jewel.png">
+</div>
+
+2 **Unscrew controller** Remove all screws shown in the image below
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/Remove%20screws.png">
+</div>
+
+3 **Prep power points** Remove the PCB and prep your positive and negative points 
+<div align=center>
+  PCB Back:
+
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/PCB%20Back.png">
+
+  Positive and Negative Points:
+
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/Posneg.png">
+</div>
+
+4 **Place Drill Guide** Take your time with this step and ensure you have good alignment
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/Drill%20guide.png">
+</div>
+
+5 ** Drill holes** The point of no return, make sure you are 100% this is what you want
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/Drilled.png">
+</div>
+
+6 **Secure Display** Install screws and secure the display to the controller
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/Installed.png">
+</div>
+
+7 **Trim and solder conductors** Trim and solder your conductors to the correct positive and negative points. It's highly advised to test at this point
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/Soldered.png">
+</div>
+
+8 **Reassembly** Reassemble your controller and enjoy!
 
 ### Duke:
 
-Comming Soon!
+Coming Soon!
 
 
 ## 🗺️ Navigation & Menu Tree
@@ -136,7 +220,7 @@ Comming Soon!
 
 ## Notes
 
-- GIF support is experimental at this point and can cause issues or crashes It's being looked into. Also looking into proper GIF encoding aswel.
+- GIF support is experimental! Keep your GIF's under 1MB. Larger GIF's may work, but cause crashing of the firmware.
 
 ___
 
