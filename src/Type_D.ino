@@ -100,6 +100,8 @@ void setup() {
     } else {
         Serial.println("[Type D] FFat Mounted OK.");
     }
+    server80.serveStatic("/resource/", FFat, "/resource/");
+    server8080.serveStatic("/resource/", FFat, "/resource/");
 
     // --- BOOT ANIMATION ---
     bootShowScreen();

@@ -1,3 +1,4 @@
+#include <random>
 #include <SPI.h>
 #include "imagedisplay.h"
 #include <vector>
@@ -8,14 +9,16 @@
 #include "esp_heap_caps.h"
 #include "disp_cfg.h"
 #include <WiFi.h>
+#include <esp_system.h>
+#include <ctime>
 
 class LGFX;
 
 namespace ImageDisplay {
 
 bool paused = false;
-
-void setPaused(bool p) { paused = p; }
+static std::default_random_engine rng;
+static bool seeded = false;
 
 // --- File lists and display mode state ---
 static LGFX* _tft = nullptr;
@@ -35,6 +38,17 @@ struct RAMGIFHandle {
     size_t pos;
 };
 static RAMGIFHandle* s_gifHandle = nullptr;
+
+void removeFromPlaylist(const String& path) {
+    auto removeIt = [&](std::vector<String>& list) {
+        list.erase(std::remove(list.begin(), list.end(), path), list.end());
+    };
+    removeIt(jpgList);
+    removeIt(gifList);
+    removeIt(randomStack);
+}
+
+void setPaused(bool p) { paused = p; }
 
 void drawNoImagesMessage(LGFX* tft) {
     tft->fillScreen(TFT_BLACK);
@@ -78,7 +92,7 @@ static void freeRamGifHandle() {
         delete s_gifHandle;
         s_gifHandle = nullptr;
     }
-    currentIsGif = false; // <-- Always mark as not in GIF playback after freeing
+    currentIsGif = false;
 }
 
 // --- GIF RAM Callbacks (Larry Bank style) ---
@@ -87,9 +101,7 @@ void* GIFOpenRAM(const char*, int32_t* pSize) {
     *pSize = s_gifHandle->size;
     return s_gifHandle;
 }
-void GIFCloseRAM(void* hptr) {
-    // No op. We free after playback (or on error).
-}
+void GIFCloseRAM(void* hptr) { /* No op. We free after playback (or on error). */ }
 int32_t GIFReadRAM(GIFFILE* pFile, uint8_t* pBuf, int32_t iLen) {
     RAMGIFHandle* h = static_cast<RAMGIFHandle*>(pFile->fHandle);
     int32_t avail = h->size - h->pos;
@@ -135,6 +147,11 @@ void closeGif() {
 
 void begin(LGFX* tft) {
     _tft = tft;
+    if (!seeded) {
+        // Use a combo of esp_random() and millis() for a better seed
+        rng.seed(esp_random() ^ millis());
+        seeded = true;
+    }
     refreshFileLists();
     currentMode = MODE_RANDOM;
 }
@@ -190,79 +207,84 @@ void displayImage(const String& path) {
     }
     _tft->fillScreen(TFT_BLACK);
 
-    closeGif();           // Defensive: always close old GIF
-    freeRamGifHandle();   // Always free previous RAM buffer
+    closeGif();
+    freeRamGifHandle();
 
-    currentIsGif = false; // Reset before detection
+    currentIsGif = false;
 
     String lower = path;
     lower.toLowerCase();
 
     if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) {
         File jpgFile = FFat.open(path, "r");
-        if (jpgFile && jpgFile.size() > 0) {
-            size_t jpgSize = jpgFile.size();
-            uint8_t* jpgBuffer = (uint8_t*)heap_caps_malloc(jpgSize, MALLOC_CAP_SPIRAM);
-            if (jpgBuffer) {
-                int bytesRead = jpgFile.read(jpgBuffer, jpgSize);
-                jpgFile.close();
-                if ((size_t)bytesRead != jpgSize) {
-                    Serial.printf("[ImageDisplay] JPG read mismatch: %d != %u\n", bytesRead, jpgSize);
-                }
-                _tft->drawJpg(jpgBuffer, jpgSize, 0, 0);
-                heap_caps_free(jpgBuffer);
-                jpgBuffer = nullptr;
-            } else {
-                jpgFile.close();
-                Serial.println("[ImageDisplay] PSRAM alloc failed!");
-            }
-        } else {
-            Serial.println("[ImageDisplay] JPG file open or size failed!");
+        if (!jpgFile || jpgFile.size() == 0) {
+            Serial.printf("[ImageDisplay] JPG missing or empty: %s\n", path.c_str());
             if (jpgFile) jpgFile.close();
+            removeFromPlaylist(path);
+            nextImage();
+            return;
+        }
+        size_t jpgSize = jpgFile.size();
+        uint8_t* jpgBuffer = (uint8_t*)heap_caps_malloc(jpgSize, MALLOC_CAP_SPIRAM);
+        if (jpgBuffer) {
+            int bytesRead = jpgFile.read(jpgBuffer, jpgSize);
+            jpgFile.close();
+            if ((size_t)bytesRead != jpgSize) {
+                Serial.printf("[ImageDisplay] JPG read mismatch: %d != %u\n", bytesRead, jpgSize);
+            }
+            _tft->drawJpg(jpgBuffer, jpgSize, 0, 0);
+            heap_caps_free(jpgBuffer);
+            jpgBuffer = nullptr;
+        } else {
+            jpgFile.close();
+            Serial.println("[ImageDisplay] PSRAM alloc failed!");
         }
     } else if (lower.endsWith(".gif")) {
+        Serial.printf("[ImageDisplay] Loading GIF: %s\n", path.c_str());
         File f = FFat.open(path, "r");
-        if (f && f.size() > 0) {
-            size_t gifSize = f.size();
-            uint8_t* gifBuffer = (uint8_t*)heap_caps_malloc(gifSize, MALLOC_CAP_SPIRAM);
-            if (gifBuffer) {
-                int bytesRead = f.read(gifBuffer, gifSize);
-                f.close();
-                if ((size_t)bytesRead != gifSize) {
-                    Serial.printf("[ImageDisplay] GIF read mismatch: %d != %u\n", bytesRead, gifSize);
+        if (!f || f.size() == 0) {
+            Serial.printf("[ImageDisplay] GIF missing or empty: %s\n", path.c_str());
+            if (f) f.close();
+            removeFromPlaylist(path);
+            nextImage();
+            return;
+        }
+        size_t gifSize = f.size();
+        uint8_t* gifBuffer = (uint8_t*)heap_caps_malloc(gifSize, MALLOC_CAP_SPIRAM);
+        if (gifBuffer) {
+            int bytesRead = f.read(gifBuffer, gifSize);
+            f.close();
+            if ((size_t)bytesRead != gifSize) {
+                Serial.printf("[ImageDisplay] GIF read mismatch: %d != %u\n", bytesRead, gifSize);
+            }
+            freeRamGifHandle();
+            s_gifHandle = new RAMGIFHandle{gifBuffer, gifSize, 0};
+            gif.begin(GIF_PALETTE_RGB565_BE);
+            if (gif.open("", GIFOpenRAM, GIFCloseRAM, GIFReadRAM, GIFSeekRAM, gifDraw)) {
+                currentIsGif = true;
+                int startLoop = gif.getLoopCount();
+                int frameDelay = 0;
+                while (gif.playFrame(true, &frameDelay)) {
+                    delay(frameDelay);
+                    yield();
+                    if (gif.getLoopCount() > startLoop) break;
                 }
-                // Free any old handle/buffer
+                gif.close();
+                Serial.println("[ImageDisplay] GIF playback finished");
                 freeRamGifHandle();
-                s_gifHandle = new RAMGIFHandle{gifBuffer, gifSize, 0};
-                gif.begin(GIF_PALETTE_RGB565_BE);
-                if (gif.open("", GIFOpenRAM, GIFCloseRAM, GIFReadRAM, GIFSeekRAM, gifDraw)) {
-                    currentIsGif = true; // Only TRUE while GIF handle is valid!
-                    int startLoop = gif.getLoopCount();
-                    int frameDelay = 0;
-                    while (gif.playFrame(true, &frameDelay)) {
-                        delay(frameDelay);
-                        yield();
-                        if (gif.getLoopCount() > startLoop) break;
-                    }
-                    gif.close();
-                    Serial.println("[ImageDisplay] GIF playback finished");
-                    freeRamGifHandle(); // Always free after playback
-                    currentIsGif = false; // Mark as done!
-                } else {
-                    Serial.println("[ImageDisplay] GIF decoder failed to open RAM file!");
-                    freeRamGifHandle(); // Always free after error
-                    currentIsGif = false;
-                }
+                currentIsGif = false;
             } else {
-                f.close();
-                Serial.println("[ImageDisplay] GIF PSRAM alloc failed!");
+                Serial.println("[ImageDisplay] GIF decoder failed to open RAM file!");
+                freeRamGifHandle();
                 currentIsGif = false;
             }
         } else {
-            Serial.println("[ImageDisplay] GIF file open or size failed!");
-            if (f) f.close();
+            f.close();
+            Serial.println("[ImageDisplay] GIF PSRAM alloc failed!");
             currentIsGif = false;
         }
+    } else {
+        Serial.println("[ImageDisplay] Unknown file type or open/size failed!");
     }
     lastImageChange = millis();
 }
@@ -274,19 +296,20 @@ void displayRandomImage() {
     for (auto& f : gifList) randomStack.push_back(f);
     if (randomStack.empty()) {
         Serial.println("[ImageDisplay] No images to display.");
-        if (_tft) drawNoImagesMessage(_tft);
         return;
     }
-    std::random_shuffle(randomStack.begin(), randomStack.end());
-    imgIndex = 0;
+    std::shuffle(randomStack.begin(), randomStack.end(), rng);
+    std::uniform_int_distribution<size_t> dist(0, randomStack.size() - 1);
+    imgIndex = dist(rng);
     displayImage(randomStack[imgIndex]);
 }
 
 void displayRandomJpg() {
     refreshFileLists();
     if (jpgList.empty()) return;
-    std::random_shuffle(jpgList.begin(), jpgList.end());
-    imgIndex = 0;
+    std::shuffle(jpgList.begin(), jpgList.end(), rng);
+    std::uniform_int_distribution<size_t> dist(0, jpgList.size() - 1);
+    imgIndex = dist(rng);
     setMode(MODE_JPG);
     displayImage(jpgList[imgIndex]);
 }
@@ -294,8 +317,9 @@ void displayRandomJpg() {
 void displayRandomGif() {
     refreshFileLists();
     if (gifList.empty()) return;
-    std::random_shuffle(gifList.begin(), gifList.end());
-    imgIndex = 0;
+    std::shuffle(gifList.begin(), gifList.end(), rng);
+    std::uniform_int_distribution<size_t> dist(0, gifList.size() - 1);
+    imgIndex = dist(rng);
     setMode(MODE_GIF);
     displayImage(gifList[imgIndex]);
 }
@@ -332,7 +356,6 @@ void loop() {
 
 void update() {
     if (paused) return; 
-    
     if (currentMode != MODE_RANDOM) return;
     if (!currentIsGif) {
         if (millis() - lastImageChange > 2000) {
@@ -340,7 +363,6 @@ void update() {
             displayImage(randomStack[imgIndex]);
         }
     } else {
-        // Only called while a GIF is truly active!
         int ret = gif.playFrame(false, nullptr);
         if (ret == 0) {
             imgIndex = (imgIndex + 1) % randomStack.size();

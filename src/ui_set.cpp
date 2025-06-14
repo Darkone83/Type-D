@@ -78,10 +78,14 @@ void UISet::update() {
                             ui_winfo_open();
                             return;
                     } else if (i == 2) {
-                        Serial.println("[UISet] Forget WiFi pressed");
+                        if (d.gestureID == LONG_PRESS){
+                            Serial.println("[UISet] Forget WiFi pressed");
                             WiFiMgr::forgetWiFi();
                             menuVisible = false;
                             return;
+                        }else{
+                            Serial.println("[UISet] Forget WiFi: long press required");
+                        }
                     } else if (i == menuCount - 1) {
                         menuVisible = false;
                         ImageDisplay::setPaused(false);

@@ -8,6 +8,7 @@ extern CST816S touch;
 
 static bool menuVisible = false;
 
+
 static void drawWiFiInfoMenu() {
     tft.fillScreen(TFT_BLACK);
 

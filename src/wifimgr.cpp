@@ -77,77 +77,86 @@ void startPortal() {
 
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     String page = R"rawliteral(
-    <!DOCTYPE html><html><head><title>Type D Setup</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1">
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WiFi Setup</title>
+    <meta name="viewport" content="width=320,initial-scale=1">
     <style>
-    body{font-family:sans-serif;margin:2em;}
-    .container{max-width:360px;margin:auto;background:#222;padding:2em;border-radius:12px;color:#fff;box-shadow:0 4px 12px #0003;}
-    input,select,button{width:100%;margin:.7em 0;padding:.5em;font-size:1.1em;border-radius:5px;border:1px solid #555;}
-    label{font-weight:bold;}
-    .ssid-list{margin:1em 0;padding:0;list-style:none;}
-    .ssid-list li{background:#333;margin:.3em 0;padding:.6em;border-radius:6px;cursor:pointer;border:1px solid #555;}
-    .ssid-list li:hover{background:#444;}
-    .status{margin:1em 0;padding:.8em;background:#333;border-radius:8px;}
-    .btn-danger{background:#d33;color:#fff;}
-    .btn-primary{background:#28a745;color:#fff;}
-    </style></head><body>
+        body {background:#111;color:#EEE;font-family:sans-serif;}
+        .container {max-width:320px;margin:24px auto;background:#222;padding:2em;border-radius:8px;box-shadow:0 0 16px #0008;}
+        input,select,button {width:100%;box-sizing:border-box;margin:.7em 0;padding:.5em;font-size:1.1em;border-radius:5px;border:1px solid #555;}
+        .ssid-list {list-style:none;padding:0;margin:0 0 1em 0;}
+        .ssid-list li {background:#333;margin:3px 0;padding:.5em;border-radius:5px;cursor:pointer;text-align:left;}
+        .ssid-list li:hover {background:#2a4;}
+        .btn-primary {background:#299a2c;color:white;}
+        .btn-danger {background:#a22;color:white;}
+        .status {margin-top:1em;font-size:.95em;}
+        label {display:block;margin-top:.5em;margin-bottom:.1em;}
+    </style>
+</head>
+<body>
     <div class="container">
-    <h2>Type D Setup</h2>
-
-    <form id="wifiForm">
-        <label>WiFi Network</label>
-        <select id="ssidSelect" style="width:100%;margin-bottom:8px;" onchange="document.getElementById('ssid').value = this.value;">
-            <option value="">(Scanning...)</option>
-        </select>
-        <input type="text" id="ssid" placeholder="SSID" required>
-        <label>Password</label>
-        <input type="password" id="pass" placeholder="WiFi Password">
-        <button type="button" onclick="save()" class="btn-primary">Connect & Save</button>
-        <button type="button" onclick="forget()" class="btn-danger">Forget WiFi</button>
-    </form>
-
-
-
-    <div class="status" id="status">Status: ...</div>
+        <div style="width:100%;text-align:center;margin-bottom:1em">
+            <img src="/resource/TD.jpg" alt="Type D" style="width:128px;height:auto;display:block;margin:0 auto;">
+        </div>
+        <ul class="ssid-list" id="ssidList"><li>Please select a network</li></ul>
+        <form id="wifiForm">
+            <label>WiFi Network</label>
+            <input type="text" id="ssid" placeholder="SSID">
+            <label>Password</label>
+            <input type="password" id="pass" placeholder="WiFi Password">
+            <button type="button" onclick="save()" class="btn-primary">Connect & Save</button>
+            <button type="button" onclick="forget()" class="btn-danger">Forget WiFi</button>
+        </form>
+        <div class="status" id="status">Status: ...</div>
     </div>
-
     <script>
-    function scan() {
-        fetch('/scan').then(r => r.json()).then(list => {
-            let select = document.getElementById('ssidSelect');
-            select.innerHTML = '';
-            list.forEach(ssid => {
-                let opt = document.createElement('option');
-                opt.value = ssid;
-                opt.textContent = ssid;
-                select.appendChild(opt);
+        function scan() {
+            fetch('/scan').then(r => r.json()).then(list => {
+                let ul = document.getElementById('ssidList');
+                if (list.length === 0) {
+                    ul.innerHTML = '<li>Please select a network</li>';
+                } else {
+                    ul.innerHTML = '';
+                    list.forEach(ssid => {
+                        let li = document.createElement('li');
+                        li.textContent = ssid;
+                        li.onclick = () => document.getElementById('ssid').value = ssid;
+                        ul.appendChild(li);
+                    });
+                }
+            }).catch(() => {
+                document.getElementById('ssidList').innerText = 'Scan failed';
             });
-        }).catch(() => {
-            let select = document.getElementById('ssidSelect');
-            select.innerHTML = '<option>(Scan failed)</option>';
-        });
-    }
-    function save() {
-        let s=document.getElementById('ssid').value;
-        let p=document.getElementById('pass').value;
-        fetch('/connect?ssid='+encodeURIComponent(s)+'&pass='+encodeURIComponent(p)).then(r=>r.text()).then(msg=>{
-          document.getElementById('status').innerText='Status: '+msg;
-        });
-    }
-    function forget() {
-        fetch('/forget').then(r=>r.text()).then(msg=>{
-          document.getElementById('status').innerText='Status: '+msg;
-        });
-    }
-    function status() {
-        fetch('/status').then(r=>r.text()).then(msg=>{
-            document.getElementById('status').innerText='Status: '+msg;
-        });
-    }
-    scan(); setInterval(status, 3000); status();
-    </script>
+        }
 
-    </body></html>
+        function save() {
+            let ssid = document.getElementById('ssid').value;
+            let pass = document.getElementById('pass').value;
+            fetch('/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ssid:ssid,pass:pass})
+            }).then(r => r.text()).then(t => {
+                document.getElementById('status').innerText = t;
+            });
+        }
+
+        function forget() {
+            fetch('/forget').then(r => r.text()).then(t => {
+                document.getElementById('status').innerText = t;
+                document.getElementById('ssid').value = '';
+                document.getElementById('pass').value = '';
+            });
+        }
+
+        // Run scan on page load
+        window.onload = scan;
+    </script>
+</body>
+</html>
+
     )rawliteral";
 
         request->send(200, "text/html", page);

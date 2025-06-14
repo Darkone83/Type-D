@@ -13,11 +13,11 @@ static Preferences prefs;
 #define BRIGHTNESS_PREF_KEY "brightness"
 #define BRIGHTNESS_PREF_NS "type_d"
 
-enum BrightnessLevel { BRIGHT_HIGH, BRIGHT_MED, BRIGHT_LOW };
+enum BrightnessLevel { BRIGHT_HIGH, BRIGHT_MED_HIGH, BRIGHT_MED, BRIGHT_MED_LOW, BRIGHT_LOW };
 static BrightnessLevel currLevel = BRIGHT_HIGH;
 
-const int brightPercents[3] = {100, 60, 15};
-const char* brightLabels[3] = {"High", "Med", "Low"};
+const int brightPercents[5] = {100, 75, 50, 25, 5};
+const char* brightLabels[5] = {"High", "Med-High", "Med","Med-Low", "Low"};
 
 static int percent_to_hw(int percent) {
     if (percent < 5) percent = 5;
@@ -69,8 +69,10 @@ void ui_bright_open() {
     prefs.begin(BRIGHTNESS_PREF_NS, true); // read-only
     int lastPercent = prefs.getUInt(BRIGHTNESS_PREF_KEY, 100);
     prefs.end();
-    if (lastPercent >= 80)      currLevel = BRIGHT_HIGH;
+    if (lastPercent >= 90)      currLevel = BRIGHT_HIGH;
+    else if (lastPercent >= 65) currLevel = BRIGHT_MED_HIGH;
     else if (lastPercent >= 40) currLevel = BRIGHT_MED;
+    else if (lastPercent >= 15) currLevel = BRIGHT_MED_LOW;
     else                        currLevel = BRIGHT_LOW;
 
     menuVisible = true;
@@ -100,7 +102,7 @@ void ui_bright_update() {
 
             if (d.x >= btnX && d.x < btnX + btnW && d.y >= btnY && d.y < btnY + btnH) {
                 Serial.println("[ui_bright_update] Brightness button pressed");
-                currLevel = (BrightnessLevel)((currLevel + 1) % 3);
+                currLevel = (BrightnessLevel)((currLevel + 1) % 5);
                 apply_brightness(currLevel);
                 drawBrightnessMenu();
                 delay(400);

@@ -128,6 +128,9 @@ void FileMan::begin(AsyncWebServer& server) {
 // --- HTML page builder ---
 String buildFileManagerPage() {
     String html = _pageHeader;
+    html += "<div style='width:100%;text-align:center;margin-bottom:1em'>"
+            "<img src=\"/resource/TD.jpg\" alt=\"Type D\" style=\"width:128px;height:auto;display:block;margin:0 auto;\">"
+            "</div>";
     html += "<h1>File Manager</h1>";
 
     // --- Insert FFat Space Usage ---
