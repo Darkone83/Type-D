@@ -30,14 +30,26 @@ enum {
 
 static void execute_cmd(uint8_t code, AsyncWebServerRequest* request = nullptr, Stream* serial = nullptr);
 
-static void handle_cmd(AsyncWebServerRequest *request) {
+void handle_cmd(AsyncWebServerRequest *request) {
     if (!request->hasParam("c")) {
         request->send(400, "application/json", "{\"err\":\"Missing command param\"}");
         return;
     }
     String cstr = request->getParam("c")->value();
-    uint8_t code = (uint8_t)strtol(cstr.c_str(), nullptr, 16);
-    execute_cmd(code, request, nullptr);
+    // Parse 4-digit hex string into uint16_t command code
+    uint16_t code = 0;
+    if (cstr.length() == 4) {
+        // Parse big-endian 2-byte hex
+        char high_byte_str[3] = { cstr.charAt(0), cstr.charAt(1), 0 };
+        char low_byte_str[3] = { cstr.charAt(2), cstr.charAt(3), 0 };
+       uint8_t high_byte = (uint8_t)strtol(high_byte_str, nullptr, 16);
+        uint8_t low_byte = (uint8_t)strtol(low_byte_str, nullptr, 16);
+        code = ((uint16_t)high_byte << 8) | low_byte;
+    } else {
+        // Fallback to single byte parse for backward compatibility
+        code = (uint16_t)strtol(cstr.c_str(), nullptr, 16);
+    }
+    execute_cmd((uint8_t)code, request, nullptr);
 }
 
 void cmd_init(AsyncWebServer *server, LGFX *tft) {
