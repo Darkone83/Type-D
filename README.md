@@ -224,7 +224,7 @@ Set up your WiFi by joining the Type D setup wifi network that Type D broadcasts
 
 ## Diagnostics
 
-You can access the diagnotsic page once you have connected to wifi by visiting HTTP://<device IP>:8080/diag
+You can access the diagnotsic page once you have connected to wifi by visiting HTTP://"device IP":8080/diag
 
 ## Notes
 
