@@ -57,7 +57,7 @@ void startPortal() {
     delay(100);
     setAPConfig();
 
-    bool apok = WiFi.softAP("Type D setup", NULL, 1, 0);
+    bool apok = WiFi.softAP("Type D Setup", NULL, 1, 0);
     Serial.printf("[WiFiMgr] softAP result: %d, IP: %s\n", apok, WiFi.softAPIP().toString().c_str());
     delay(500);
 
