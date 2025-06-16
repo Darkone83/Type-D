@@ -69,7 +69,7 @@ void displayPortalInfo() {
     tft.drawString("WiFi Portal Active", tft.width()/2, tft.height()/2 - 30);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
     tft.setTextSize(2);
-    tft.drawString("Type D setup", tft.width()/2, tft.height()/2);
+    tft.drawString("Type D Setup", tft.width()/2, tft.height()/2);
     tft.drawString("IP: 192.168.4.1", tft.width()/2, tft.height()/2 + 16);
     tft.setTextSize(1);
     tft.drawString("Connect below to setup.", tft.width()/2, tft.height()/2 + 32);
