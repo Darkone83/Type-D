@@ -33,25 +33,15 @@ Solder SDA from the LCP header to Pin 7, SCL from the LPC to pin 6, GND to GNV, 
 
 Mount to the RF shield with VHB tape or foam tape
 
-## Basic API: `udp_stat`
+## Connect to your wifi network
 
-Send statistics over UDP.
+Locate and join the Type D EXP Setup network, and join your preferred wifi network. Both Type D and Type D EXP need to be on the same network to work properly.
 
-```cpp
-#include "udp_stat.h"
+## LED Statuses
 
-// Initialize UDP statistics module
-UDPStat::begin(uint16_t port);
+- White: Booting
+- Blinking Purple: WiFi portal active
+- Green: connected to WiFi
+- Red: Wifi connection failed
+- Orange blink: UPD Packet send *not fully working*
 
-// Send a statistic
-UDPStat::sendStat(const char* name, int value);
-
-// Example:
-void setup() {
-    UDPStat::begin(8087); // Start UDP on port 8087
-}
-
-void loop() {
-    UDPStat::sendStat("temperature", 25);
-    delay(1000);
-}
