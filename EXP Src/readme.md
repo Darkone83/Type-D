@@ -1,4 +1,4 @@
-# Type_D_EXP
+# Type D EXP
 
 Firmware for the Waveshare ESP32-S3-Zero, featuring UDP-based status reporting.
 
