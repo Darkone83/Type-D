@@ -2,6 +2,12 @@
 
 Firmware for the Waveshare ESP32-S3-Zero, featuring a touch display interface and UDP-based status reporting.
 
+## Required Hardware
+
+Waveshare ESP32-S3 Zero
+
+<a href="https://www.amazon.com/dp/B0CS6VS1DJ?ref_=ppx_hzsearch_conn_dt_b_fed_asin_title_2">Amazon</a>
+
 ## Build Instructions (Arduino IDE)
 
 1. **Board Setup**  
@@ -21,6 +27,12 @@ Firmware for the Waveshare ESP32-S3-Zero, featuring a touch display interface an
 5. **Build and Upload**  
    - Open `Type_D_EXP.ino` in Arduino IDE.  
    - Click **Upload**.
+
+## Installation
+
+Solder SDA from the LCP header to Pin 7, SCL from the LPC to pin 6, GND to GNV, and 5v from the LPV to 5v on the S3
+
+Mount to the RF shield with VHB tape or foam tape
 
 ## Basic API: `udp_stat`
 
