@@ -1,6 +1,6 @@
 # Type_D_EXP
 
-Firmware for the Waveshare ESP32-S3-Zero, featuring a touch display interface and UDP-based status reporting.
+Firmware for the Waveshare ESP32-S3-Zero, featuring UDP-based status reporting.
 
 ## Required Hardware
 
@@ -19,9 +19,8 @@ Waveshare ESP32-S3 Zero
    - Copy all project files (including `Type_D_EXP.ino` and related `.cpp`/`.h` files) into your Arduino sketch folder.
 
 3. **Install Libraries**  
-   - Use Library Manager or "Add .ZIP Library..." to install:  
-     - AsyncTCP  
-     - ESPAsyncWebServer  
+   - AsyncTCP  
+   - ESPAsyncWebServer  
 
 
 5. **Build and Upload**  
