@@ -19,22 +19,18 @@ void Cache_Manager::setFanSpeed(int percent) {
     if (percent < 0) percent = 0;
     if (percent > 100) percent = 100;
     cache.fanSpeed = percent;
-    // Debug:
-    Serial.printf("[CacheMgr] Fan speed updated: %d%%\n", percent);
 }
 
 void Cache_Manager::setCpuTemp(int celsius) {
     // Accept only valid range for Xbox (avoid garbage)
     if (celsius > 0 && celsius < 100) {
         cache.cpuTemp = celsius;
-        Serial.printf("[CacheMgr] CPU Temp updated: %dC\n", celsius);
     }
 }
 
 void Cache_Manager::setAmbientTemp(int celsius) {
     if (celsius > 0 && celsius < 100) {
         cache.ambientTemp = celsius;
-        Serial.printf("[CacheMgr] Ambient Temp updated: %dC\n", celsius);
     }
 }
 

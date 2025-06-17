@@ -32,15 +32,10 @@ void UDPStat::loop() {
             // Set LED to transmitting (orange) just before send
             LedStat::setStatus(LedStatus::UdpTransmit);
 
-            Serial.printf("[UDPStat] Sending XboxStatus packet to 255.255.255.255:%u\n", UDP_PORT);
-            Serial.printf("  Fan: %d, CPU: %d, Ambient: %d, App: '%s'\n",
-                st.fanSpeed, st.cpuTemp, st.ambientTemp, st.currentApp);
-
             udp.beginPacket("255.255.255.255", UDP_PORT);
             udp.write(reinterpret_cast<const uint8_t*>(&st), sizeof(XboxStatus));
             udp.endPacket();
 
-            Serial.println("[UDPStat] Packet sent.");
 
             // (LED status can remain 'UdpTransmit' until end of loop for visual blink)
         } else {
@@ -56,7 +51,6 @@ void UDPStat::loop() {
         udp.beginPacket("255.255.255.255", ID_BROADCAST_PORT);
         udp.write(&STATIC_ID, 1); // Send single byte: 6
         udp.endPacket();
-        Serial.printf("[UDPStat] Broadcasted ID %u to port %u\n", STATIC_ID, ID_BROADCAST_PORT);
     }
 
     // 3. Set LED state after transmitting (for a visible blink)

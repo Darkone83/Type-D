@@ -18,8 +18,8 @@ void parse(const XboxSMBusStatus &status) {
 // Optional: Print the current cache status for debug
 void printStatus() {
     const XboxStatus &st = Cache_Manager::getStatus();
-    Serial.printf("[XboxSMBus] Fan: %d%% | CPU: %dC | Ambient: %dC | App: %s\n",
-                  st.fanSpeed, st.cpuTemp, st.ambientTemp, st.currentApp);
+    Serial.printf("[XboxSMBus] Fan: %d%% | CPU: %dC | Ambient: %dC",
+                  st.fanSpeed, st.cpuTemp, st.ambientTemp);
 }
 
 } // namespace Parser_XboxSMBus

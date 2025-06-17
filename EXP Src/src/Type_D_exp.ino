@@ -49,7 +49,7 @@ void loop() {
 
     // 2. Status Debug Print (every 1s)
     static unsigned long lastPrint = 0;
-    if (millis() - lastPrint > 1000) {
+    if (millis() - lastPrint > 5000) {
         lastPrint = millis();
         const XboxStatus& st = Cache_Manager::getStatus();
         Serial.printf("[SMBus] Fan=%d%%, CPU=%dC, Ambient=%dC, App='%s'\n",
