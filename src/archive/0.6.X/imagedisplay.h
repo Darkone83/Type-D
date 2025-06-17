@@ -39,10 +39,4 @@ void showIdle();
 const std::vector<String>& getJpgList();
 const std::vector<String>& getGifList();
 
-// These are now file-static, not global; you do NOT need to use them directly outside the implementation
-// void* GIFOpenRAM(const char*, int32_t*, void* userData);
-// void GIFCloseRAM(void* handle);
-// int32_t GIFReadRAM(GIFFILE* pFile, uint8_t* pBuf, int32_t iLen);
-// int32_t GIFSeekRAM(GIFFILE* pFile, int32_t iPosition);
-
 } // namespace ImageDisplay

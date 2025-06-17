@@ -10,6 +10,10 @@ static bool menuVisible = false;
 
 
 static void drawWiFiInfoMenu() {
+    tft.setRotation(0);
+    tft.setTextDatum(middle_center);
+    tft.setTextFont(1);
+    tft.setTextSize(1);
     tft.fillScreen(TFT_BLACK);
 
     // Title

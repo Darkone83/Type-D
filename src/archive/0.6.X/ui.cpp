@@ -3,7 +3,7 @@
 #include "CST816S.h"
 #include "imagedisplay.h"
 #include "ui_set.h"
-#include "ui_about.h"  // <-- ADD THIS LINE
+#include "ui_about.h"
 
 static LGFX* _tft = nullptr;
 CST816S touch(TOUCH_SDA, TOUCH_SCL, TOUCH_RST, TOUCH_INT);

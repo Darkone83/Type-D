@@ -19,6 +19,10 @@ static const char* menuItems[] = {
 static const int menuCount = sizeof(menuItems) / sizeof(menuItems[0]);
 
 void drawSettingsMenu() {
+    _tft->setRotation(0);
+    _tft->setTextDatum(middle_center);
+    _tft->setTextFont(1);
+    _tft->setTextSize(1);
     _tft->fillScreen(TFT_BLACK);
     _tft->setTextDatum(middle_center);
     _tft->setTextColor(TFT_GREEN, TFT_BLACK);

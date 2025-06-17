@@ -20,7 +20,6 @@ bool paused = false;
 static std::default_random_engine rng;
 static bool seeded = false;
 
-// --- File lists and display mode state ---
 static LGFX* _tft = nullptr;
 static AnimatedGIF gif;
 static Mode currentMode = MODE_RANDOM;
@@ -38,6 +37,8 @@ struct RAMGIFHandle {
     size_t pos;
 };
 static RAMGIFHandle* s_gifHandle = nullptr;
+
+static bool imageDone = false;
 
 void removeFromPlaylist(const String& path) {
     auto removeIt = [&](std::vector<String>& list) {
@@ -60,21 +61,18 @@ void drawNoImagesMessage(LGFX* tft) {
     uint16_t w, h;
     tft->setTextColor(TFT_WHITE, TFT_BLACK);
 
-    // Main message
     tft->setTextSize(2);
     w = tft->textWidth(mainMsg);
     h = tft->fontHeight();
     tft->setCursor((tft->width() - w)/2, tft->height()/2 - 30);
     tft->print(mainMsg);
 
-    // IP/port
     tft->setTextSize(2);
     w = tft->textWidth(ipMsg);
     h = tft->fontHeight();
     tft->setCursor((tft->width() - w)/2, tft->height()/2);
     tft->print(ipMsg);
 
-    // Footer small, near bottom
     tft->setTextSize(1);
     w = tft->textWidth(footer);
     h = tft->fontHeight();
@@ -137,18 +135,13 @@ void gifDraw(GIFDRAW* pDraw) {
     _tft->pushImage(x_offset + pDraw->iX, y_offset + y, pDraw->iWidth, 1, lineBuffer);
 }
 
-// Defensive: Only close GIF, never free buffer here
 void closeGif() {
     gif.close();
-    // Don't free RAM here, free after playback!
 }
-
-// --- API Implementation ---
 
 void begin(LGFX* tft) {
     _tft = tft;
     if (!seeded) {
-        // Use a combo of esp_random() and millis() for a better seed
         rng.seed(esp_random() ^ millis());
         seeded = true;
     }
@@ -211,6 +204,7 @@ void displayImage(const String& path) {
     freeRamGifHandle();
 
     currentIsGif = false;
+    imageDone = false;
 
     String lower = path;
     lower.toLowerCase();
@@ -246,6 +240,7 @@ void displayImage(const String& path) {
             if (f) f.close();
             removeFromPlaylist(path);
             nextImage();
+            imageDone = true;
             return;
         }
         size_t gifSize = f.size();
@@ -271,18 +266,22 @@ void displayImage(const String& path) {
                 gif.close();
                 freeRamGifHandle();
                 currentIsGif = false;
+                imageDone = true;
             } else {
                 Serial.println("[ImageDisplay] GIF decoder failed to open RAM file!");
                 freeRamGifHandle();
                 currentIsGif = false;
+                imageDone = true;
             }
         } else {
             f.close();
             Serial.println("[ImageDisplay] GIF PSRAM alloc failed!");
             currentIsGif = false;
+            imageDone = true;
         }
     } else {
         Serial.println("[ImageDisplay] Unknown file type or open/size failed!");
+        imageDone = true;
     }
     lastImageChange = millis();
 }
@@ -349,7 +348,7 @@ void prevImage() {
 }
 
 void loop() {
-    // Legacy compatibility; no changes
+    // No changes
 }
 
 void update() {
@@ -365,6 +364,7 @@ void update() {
         if (ret == 0) {
             imgIndex = (imgIndex + 1) % randomStack.size();
             displayImage(randomStack[imgIndex]);
+            imageDone = true;
         }
     }
 }
@@ -379,5 +379,7 @@ void clear() {
 
 const std::vector<String>& getJpgList() { return jpgList; }
 const std::vector<String>& getGifList() { return gifList; }
+
+bool isDone() { return imageDone; }
 
 } // namespace ImageDisplay

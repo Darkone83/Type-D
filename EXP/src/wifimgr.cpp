@@ -2,9 +2,10 @@
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <Preferences.h>
-#include <FFat.h>
 #include <DNSServer.h>
-#include <esp_wifi.h>
+#include "led_stat.h"
+#include <vector>
+#include "esp_wifi.h"
 
 static AsyncWebServer server(80);
 namespace WiFiMgr {
@@ -12,6 +13,7 @@ namespace WiFiMgr {
 static String ssid, password;
 static Preferences prefs;
 static DNSServer dnsServer;
+static std::vector<String> lastScanResults;
 
 enum class State { IDLE, CONNECTING, CONNECTED, PORTAL };
 static State state = State::PORTAL;
@@ -20,6 +22,10 @@ static int connectAttempts = 0;
 static const int maxAttempts = 10;
 static unsigned long lastAttempt = 0;
 static unsigned long retryDelay = 3000;
+
+AsyncWebServer& getServer() {
+    return server;
+}
 
 static void setAPConfig() {
     WiFi.softAPConfig(
@@ -52,31 +58,25 @@ void clearCreds() {
 
 void startPortal() {
     WiFi.disconnect(true);
-    delay(200);
-    WiFi.mode(WIFI_AP_STA);
     delay(100);
     setAPConfig();
+    WiFi.mode(WIFI_AP_STA);  // AP+STA for S3
+    delay(100);
 
-    bool apok = WiFi.softAP("Type D Setup", NULL, 1, 0);
+    // Use channel 6 for iOS compatibility, or try 1
+    bool apok = WiFi.softAP("Type D EXP Setup", "", 6, 0);
+    esp_wifi_set_max_tx_power(20);
+    LedStat::setStatus(LedStatus::Portal);
     Serial.printf("[WiFiMgr] softAP result: %d, IP: %s\n", apok, WiFi.softAPIP().toString().c_str());
-    delay(500);
-
-    esp_wifi_set_ps(WIFI_PS_NONE);
-    esp_wifi_start();
-
-    if (!apok) {
-        Serial.println("[WiFiMgr] softAP failed, retrying...");
-        WiFi.softAPdisconnect(true);
-        delay(200);
-        apok = WiFi.softAP("Type D setup", NULL, 1, 0);
-        delay(500);
-    }
+    delay(200);
 
     IPAddress apIP = WiFi.softAPIP();
     dnsServer.start(53, "*", apIP);
 
+    server.reset(); // Needed to avoid double route definition on multiple starts
+
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    String page = R"rawliteral(
+        String page = R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
@@ -98,7 +98,7 @@ void startPortal() {
 <body>
     <div class="container">
         <div style="width:100%;text-align:center;margin-bottom:1em">
-            <img src="/resource/TD.jpg" alt="Type D" style="width:128px;height:auto;display:block;margin:0 auto;">
+            <span style="font-size:2em;font-weight:bold;">Type D EXP Setup</span>
         </div>
         <ul class="ssid-list" id="ssidList"><li>Please select a network</li></ul>
         <form id="wifiForm">
@@ -130,7 +130,8 @@ void startPortal() {
                 document.getElementById('ssidList').innerText = 'Scan failed';
             });
         }
-
+        setInterval(scan, 2000);
+        window.onload = scan;
         function save() {
             let ssid = document.getElementById('ssid').value;
             let pass = document.getElementById('pass').value;
@@ -142,7 +143,6 @@ void startPortal() {
                 document.getElementById('status').innerText = t;
             });
         }
-
         function forget() {
             fetch('/forget').then(r => r.text()).then(t => {
                 document.getElementById('status').innerText = t;
@@ -150,15 +150,10 @@ void startPortal() {
                 document.getElementById('pass').value = '';
             });
         }
-
-        // Run scan on page load
-        window.onload = scan;
     </script>
 </body>
 </html>
-
-    )rawliteral";
-
+        )rawliteral";
         request->send(200, "text/html", page);
     });
 
@@ -186,8 +181,47 @@ void startPortal() {
         password = pw;
         state = State::CONNECTING;
         connectAttempts = 1;
+        WiFi.mode(WIFI_AP_STA);
+        delay(100);
         WiFi.begin(ssid.c_str(), password.c_str());
         request->send(200, "text/plain", "Connecting to: " + ssid);
+    });
+
+    // PATCHED /scan endpoint: caches last scan result for reliability
+    server.on("/scan", HTTP_GET, [](AsyncWebServerRequest *request){
+        int n = WiFi.scanComplete();
+        if (n == -2) {
+            WiFi.scanNetworks(true, true);
+            String json = "[";
+            for (size_t i = 0; i < lastScanResults.size(); ++i) {
+                if (i) json += ",";
+                json += "\"" + lastScanResults[i] + "\"";
+            }
+            json += "]";
+            request->send(200, "application/json", json);
+            return;
+        } else if (n == -1) {
+            String json = "[";
+            for (size_t i = 0; i < lastScanResults.size(); ++i) {
+                if (i) json += ",";
+                json += "\"" + lastScanResults[i] + "\"";
+            }
+            json += "]";
+            request->send(200, "application/json", json);
+            return;
+        }
+        lastScanResults.clear();
+        for (int i = 0; i < n; ++i) {
+            lastScanResults.push_back(WiFi.SSID(i));
+        }
+        WiFi.scanDelete();
+        String json = "[";
+        for (size_t i = 0; i < lastScanResults.size(); ++i) {
+            if (i) json += ",";
+            json += "\"" + lastScanResults[i] + "\"";
+        }
+        json += "]";
+        request->send(200, "application/json", json);
     });
 
     server.on("/forget", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -208,16 +242,34 @@ void startPortal() {
         request->send(200, "text/plain", "WiFi credentials cleared (debug).");
     });
 
-    server.on("/scan", HTTP_GET, [](AsyncWebServerRequest *request){
-        int n = WiFi.scanNetworks();
-        String json = "[";
-        for (int i = 0; i < n; ++i) {
-            if (i) json += ",";
-            json += "\"" + WiFi.SSID(i) + "\"";
+    // ---- PATCHED: Proper POST JSON body for ESPAsyncWebServer (Arduino 3.2.0)
+    server.on("/save", HTTP_POST,
+        [](AsyncWebServerRequest *request){},
+        NULL,
+        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t, size_t) {
+            String body = "";
+            for (size_t i = 0; i < len; i++) body += (char)data[i];
+            // crude parse: {"ssid":"...","pass":"..."}
+            int ssidStart = body.indexOf("\"ssid\":\"") + 8;
+            int ssidEnd   = body.indexOf("\"", ssidStart);
+            int passStart = body.indexOf("\"pass\":\"") + 8;
+            int passEnd   = body.indexOf("\"", passStart);
+            String newSsid = (ssidStart >= 8 && ssidEnd > ssidStart) ? body.substring(ssidStart, ssidEnd) : "";
+            String newPass = (passStart >= 8 && passEnd > passStart) ? body.substring(passStart, passEnd) : "";
+            if (newSsid.length() == 0) {
+                request->send(400, "text/plain", "SSID missing");
+                return;
+            }
+            saveCreds(newSsid, newPass);
+            ssid = newSsid;
+            password = newPass;
+            state = State::CONNECTING;
+            connectAttempts = 1;
+            WiFi.begin(newSsid.c_str(), newPass.c_str());
+            request->send(200, "text/plain", "Connecting to: " + newSsid);
+            Serial.printf("[WiFiMgr] Received new creds. SSID: %s\n", newSsid.c_str());
         }
-        json += "]";
-        request->send(200, "application/json", json);
-    });
+    );
 
     auto cp = [](AsyncWebServerRequest *r){
         r->send(200, "text/html", "<meta http-equiv='refresh' content='0; url=/' />");
@@ -251,6 +303,7 @@ void tryConnect() {
 }
 
 void begin() {
+    LedStat::setStatus(LedStatus::Booting);
     loadCreds();
     startPortal();
     if (ssid.length() > 0)
@@ -263,16 +316,16 @@ void loop() {
         if (WiFi.status() == WL_CONNECTED) {
             state = State::CONNECTED;
             dnsServer.stop();
-            WiFi.softAPdisconnect(true);
-                Serial.println("[WiFiMgr] WiFi connected.");
-                Serial.print("[WiFiMgr] IP Address: ");
-                Serial.println(WiFi.localIP());  
-
+            Serial.println("[WiFiMgr] WiFi connected.");
+            Serial.print("[WiFiMgr] IP Address: ");
+            Serial.println(WiFi.localIP());
+            LedStat::setStatus(LedStatus::WifiConnected);
         } else if (millis() - lastAttempt > retryDelay) {
             connectAttempts++;
             if (connectAttempts >= maxAttempts) {
                 state = State::PORTAL;
                 startPortal();
+                LedStat::setStatus(LedStatus::WifiFailed);
             } else {
                 WiFi.disconnect();
                 WiFi.begin(ssid.c_str(), password.c_str());

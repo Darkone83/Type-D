@@ -30,12 +30,20 @@ void drawSettingsMenu() {
     int yBase = 72;
     int itemHeight = 32;
     for (int i = 0; i < menuCount; ++i) {
-        _tft->fillRoundRect(40, yBase + i * itemHeight, 160, 28, 10, TFT_DARKGREEN);
-        _tft->drawRoundRect(40, yBase + i * itemHeight, 160, 28, 10, TFT_GREEN);
-        if (i == menuCount - 1) {
-            // Style "Back" differently
+        if (i == 2) {
+            // "Forget WiFi" - red background, white text
+            _tft->fillRoundRect(40, yBase + i * itemHeight, 160, 28, 10, TFT_RED);
+            _tft->drawRoundRect(40, yBase + i * itemHeight, 160, 28, 10, TFT_WHITE);
+            _tft->setTextColor(TFT_WHITE, TFT_RED);
+        } else if (i == menuCount - 1) {
+            // "Back" - green
+            _tft->fillRoundRect(40, yBase + i * itemHeight, 160, 28, 10, TFT_DARKGREEN);
+            _tft->drawRoundRect(40, yBase + i * itemHeight, 160, 28, 10, TFT_GREEN);
             _tft->setTextColor(TFT_GREEN, TFT_DARKGREEN);
         } else {
+            // Default - green
+            _tft->fillRoundRect(40, yBase + i * itemHeight, 160, 28, 10, TFT_DARKGREEN);
+            _tft->drawRoundRect(40, yBase + i * itemHeight, 160, 28, 10, TFT_GREEN);
             _tft->setTextColor(TFT_GREEN, TFT_DARKGREEN);
         }
         _tft->setTextSize(2);
@@ -95,9 +103,8 @@ void UISet::update() {
                 }
             }
             if (!hit) {
-                Serial.printf("[UISet] Tap not on any item (x=%d y=%d)\n", d.x, d.y);
             }
-            delay(400); // Shorter delay for better responsiveness
+            delay(400);
         }
     }
 }

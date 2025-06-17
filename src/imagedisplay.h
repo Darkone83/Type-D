@@ -6,6 +6,8 @@
 class LGFX;
 
 namespace ImageDisplay {
+
+    bool isDone();
     
     extern bool paused;
     void setPaused(bool p);

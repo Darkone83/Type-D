@@ -6,7 +6,7 @@
 //   Team Resurgent    //
 //     XBOX Scene      //
 //  And the modding    //
-//     comminuty       //
+//     community       //
 /////////////////////////
 
 #include <Arduino.h>
@@ -18,7 +18,6 @@
 #include "imagedisplay.h"
 #include "boot.h"
 #include <ESPAsyncWebServer.h>
-#include "espnow_receiver.h"
 #include "xbox_status.h"
 #include "ui.h"
 #include "ui_set.h"
@@ -27,6 +26,7 @@
 #include <Preferences.h>
 #include "cmd.h"
 #include "diag.h"
+#include "udp_detect.h"
 
 #define WIFI_TIMEOUT 120
 #define BRIGHTNESS_PREF_KEY "brightness"
@@ -39,10 +39,11 @@ AsyncWebServer server8080(8080);
 bool nowConnected = WiFiMgr::isConnected();
 bool portalInfoShown = false;
 
-unsigned long lastStatusDisplay = 0;
-bool showingXboxStatus = false;
-XboxPacket lastXboxPacket;
+static bool overlayPending = false;
+static bool showingXboxStatus = false;
+static unsigned long lastStatusDisplay = 0;
 
+XboxStatus lastXboxStatus;
 
 static int percent_to_hw(int percent) {
     if (percent < 5) percent = 5;
@@ -59,6 +60,7 @@ void apply_brightness_on_boot() {
     if (brightness > 100) brightness = 100;
     tft.setBrightness(percent_to_hw(brightness));
 }
+
 // -- Show WiFi Portal Info ONLY if portal is active (not connected) --
 void displayPortalInfo() {
     tft.fillScreen(TFT_BLACK);
@@ -74,7 +76,6 @@ void displayPortalInfo() {
     tft.setTextSize(1);
     tft.drawString("Connect below to setup.", tft.width()/2, tft.height()/2 + 32);
 }
-
 
 void setup() {
     Serial.begin(115200);
@@ -127,93 +128,67 @@ void setup() {
         displayPortalInfo();
     }
 
+    UDPDetect::begin();
+
     // --- Start detection and web server modules ---
     Detect::begin();
     server8080.begin();
     FileMan::begin(server8080);
     Diag::begin(server8080);
     cmd_init(&server8080, &tft);
-    ESPNOWReceiver::begin();
     UI::begin(&tft);
 
     Serial.printf("[Type D] Device ID: %d\n", Detect::getId());
 
     // --- Show a random image on WiFi success as well ---
     ImageDisplay::displayRandomImage();
-
 }
 
-// Track WiFi connection state for debug and display logic
-bool wasConnected = false;
-
 void loop() {
-
     WiFiMgr::loop();
-    // --- Highest priority: About animation ---
-    if (ui_about_isActive()) {
-        ui_about_update();
-        return;
+
+    // 1. Highest priority: About, brightness, menu overlays
+    if (ui_about_isActive()) { ui_about_update(); return; }
+    if (ui_bright_isVisible()) { ui_bright_update(); return; }
+    if (UISet::isMenuVisible()) { UISet::update(); return; }
+    UI::update();
+
+    // 2. Run detection and UDP polling
+    Detect::loop();
+    UDPDetect::loop();
+
+    // 3. Status overlay logic -- only show between images and if no UI/menu overlay is active
+    bool anyUiActive = ui_about_isActive() || ui_bright_isVisible() || UISet::isMenuVisible() || UI::isMenuVisible();
+
+    if (ImageDisplay::isDone() && UDPDetect::hasPacket() && !overlayPending && !showingXboxStatus && !anyUiActive) {
+        lastXboxStatus = UDPDetect::getLatest(); // latch latest
+        overlayPending = true;
+        UDPDetect::acknowledge();
     }
 
-    if (ui_bright_isVisible()) {
-        ui_bright_update();
-        return;
-    }
-    else if (UISet::isMenuVisible()) {
-        UISet::update();
-        return;
-    }
-    else {
-        UI::update();
-    }
-
-    if (!UI::isMenuVisible()) {
-        ImageDisplay::update();
-    }
-
-    bool nowConnected = WiFiMgr::isConnected();
-
-    if (nowConnected && !wasConnected) {
-        Serial.print("[Type D] ");
-        Serial.println(WiFiMgr::getStatus());
-        portalInfoShown = false;  // reset flag on connect
-    }
-
-    if (!nowConnected && wasConnected) {
-        Serial.println("[Type D] WiFi connection lost, entering portal mode.");
-        displayPortalInfo();
-        portalInfoShown = true;
-    }
-
-    if (!nowConnected && !wasConnected) {
-        if (!portalInfoShown) {
-            displayPortalInfo();
-            portalInfoShown = true;
-        }
-    }
-
-    wasConnected = nowConnected;
-
-    // --- Prevent image updates if not connected ---
-    if (!nowConnected) return;
-
-    // --- Handle Xbox status overlay ---
-    if (ESPNOWReceiver::hasPacket()) {
-        lastXboxPacket = ESPNOWReceiver::getLatest();
-        xbox_status::show(&tft, lastXboxPacket);
+    // Show overlay if pending (takes precedence over image display)
+    if (overlayPending && !anyUiActive) {
+        xbox_status::show(&tft, lastXboxStatus);
         lastStatusDisplay = millis();
         showingXboxStatus = true;
+        overlayPending = false;
+        return; // Show overlay, block image update
     }
 
-    if (showingXboxStatus) {
+    // If overlay is showing, time it out after 2s, then resume slideshow
+    if (showingXboxStatus && !anyUiActive) {
         if (millis() - lastStatusDisplay > 2000) {
             showingXboxStatus = false;
             ImageDisplay::displayRandomImage();
         }
-        return;
+        return; // Block image update while overlay active
     }
 
-    ImageDisplay::update();
+    // 4. Only update image if overlay is not showing and not in a menu
+    if (!UI::isMenuVisible()) {
+        ImageDisplay::update();
+    }
+
     cmd_serial_poll();
-    Detect::loop();
 }
+

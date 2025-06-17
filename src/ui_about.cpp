@@ -81,12 +81,18 @@ void ui_about_update() {
     if (!aboutActive) return;
 
     // --- Fade to black
+    tft.setRotation(0);
+    tft.setTextDatum(middle_center);
+    tft.setTextFont(1);
+    tft.setTextSize(1);
     about_fadeToBlack();
 
     // --- Type D + Version ---
+    tft.setRotation(0);
     tft.setTextDatum(middle_center);
-    tft.setTextColor(COLOR_GREEN, TFT_BLACK);
+    tft.setTextFont(1);
     tft.setTextSize(3);
+    tft.setTextColor(COLOR_GREEN, TFT_BLACK);
     tft.drawString("Type D", tft.width() / 2, tft.height() / 2 - 24);
     tft.setTextColor(COLOR_WHITE, TFT_BLACK);
     tft.setTextSize(2);
@@ -94,9 +100,12 @@ void ui_about_update() {
     delay(1500);
 
     // --- Fade to black
+    tft.setTextSize(1);
     about_fadeToBlack();
 
     // --- Concept by: Andr0 ---
+    tft.setTextDatum(middle_center);
+    tft.setTextFont(1);
     tft.setTextColor(COLOR_WHITE, TFT_BLACK);
     tft.setTextSize(2);
     tft.drawString("Concept by:", tft.width() / 2, tft.height() / 2 - 18);
@@ -108,9 +117,12 @@ void ui_about_update() {
     delay(1500);
 
     // --- Fade to black
+    tft.setTextSize(1);
     about_fadeToBlack();
 
     // --- Coded by: Darkone83 ---
+    tft.setTextDatum(middle_center);
+    tft.setTextFont(1);
     tft.setTextColor(COLOR_WHITE, TFT_BLACK);
     tft.setTextSize(2);
     tft.drawString("Coded by:", tft.width() / 2, tft.height() / 2 - 18);
@@ -122,9 +134,12 @@ void ui_about_update() {
     delay(1500);
 
     // --- Fade to black
+    tft.setTextSize(1);
     about_fadeToBlack();
 
     // --- Show /resource/TR.jpg ---
+    tft.setTextDatum(middle_center);
+    tft.setTextFont(1);
     about_drawImageCentered("/resource/TR.jpg");
     delay(1500);
 
@@ -132,8 +147,9 @@ void ui_about_update() {
     about_fadeToBlack();
 
     // --- Show /resource/XBS.jpg + "XBOX-scene.info" ---
-    about_drawImageCentered("/resource/XBS.jpg");
     tft.setTextDatum(middle_center);
+    tft.setTextFont(1);
+    about_drawImageCentered("/resource/XBS.jpg");
     tft.setTextColor(COLOR_WHITE, TFT_BLACK);
     tft.setTextSize(1);
     tft.drawString("XBOX-scene.info", tft.width() / 2, tft.height() - 32);
@@ -143,6 +159,8 @@ void ui_about_update() {
     about_fadeToBlack();
 
     // --- Show /resource/DC.jpg ---
+    tft.setTextDatum(middle_center);
+    tft.setTextFont(1);
     about_drawImageCentered("/resource/DC.jpg");
     tft.setTextColor(COLOR_WHITE, TFT_BLACK);
     tft.setTextSize(1);
@@ -152,7 +170,9 @@ void ui_about_update() {
     // --- Fade to black
     about_fadeToBlack();
 
-        // --- Show /resource/TD.jpg ---
+    // --- Show /resource/TD.jpg ---
+    tft.setTextDatum(middle_center);
+    tft.setTextFont(1);
     about_drawImageCentered("/resource/TD.jpg");
     tft.setTextColor(COLOR_WHITE, TFT_BLACK);
     delay(4000);

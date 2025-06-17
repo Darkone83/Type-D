@@ -1,5 +1,5 @@
 #include "xbox_status.h"
-#include <FFat.h>                // Use FFat for file access
+#include <FFat.h>
 #include "disp_cfg.h"
 
 // Ported shadowed text helper
@@ -24,7 +24,7 @@ void show(LGFX* tft, const XboxPacket& packet) {
     const int valueX = labelX + 80;
 
     uint16_t labelCol = TFT_LIGHTGREY;
-    uint16_t valueCol = 0x07E0; // Xbox green
+    uint16_t valueCol = 0x07E0;
 
     struct StatusRow {
         const char* icon;
@@ -40,7 +40,6 @@ void show(LGFX* tft, const XboxPacket& packet) {
     for (int i = 0; i < 4; ++i) {
         int y = startY + i * rowH;
 
-        // --- PORTING: Replace SD card JPG drawing with FFat loading ---
         File iconFile = FFat.open(rows[i].icon, "r");
         if (iconFile && iconFile.size() > 0) {
             size_t jpgSize = iconFile.size();

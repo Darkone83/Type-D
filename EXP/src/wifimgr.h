@@ -3,6 +3,9 @@
 #include <Arduino.h>
 
 namespace WiFiMgr {
+
+    //AsyncWebServer& getServer();
+
     void begin();
     void loop();
     void restartPortal();

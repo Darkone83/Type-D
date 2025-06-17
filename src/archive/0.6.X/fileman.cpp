@@ -1,7 +1,6 @@
-// fileman.cpp
 #include <FS.h>
 #include <ESPAsyncWebServer.h>
-#include <FFat.h> // FATFS partition
+#include <FFat.h>
 #include "fileman.h"
 #include "imagedisplay.h"
 
@@ -13,18 +12,47 @@ static const char* _pageHeader =
     "<!DOCTYPE html><html><head>"
     "<title>File Manager</title>"
     "<meta charset='UTF-8'>"
-    "<meta name='viewport' content='width=400'>"
-    "<style>body{font-family:sans-serif;text-align:center;}"
-    "input[type=file]{margin:10px;}button{margin:5px;padding:5px 15px;}"
-    ".file-list{margin:10px 0;display:inline-block;text-align:left;}"
-    ".section{margin:30px 0;}</style></head><body>";
+    "<meta name='viewport' content='width=480'>"
+"<style>"
+"html, body {"
+"    height: 100%;"
+"    margin: 0;"
+"    padding: 0;"
+"}"
+"body {"
+"    min-height: 100vh;"
+"    display: flex;"
+"    flex-direction: column;"
+"    justify-content: center;"
+"    align-items: center;"
+"    background:#141414;"
+"    color:#EEE;"
+"    font-family:sans-serif;"
+"}"
+"h1, h2 {color:#4eec27;}"
+".centered {"
+"    width: 100%;"
+"    display: flex;"
+"    flex-direction: column;"
+"    align-items: center;"
+"    justify-content: center;"
+"}"
+".section {"
+"    background:#232323;"
+"    padding:16px 18px;"
+"    margin:22px auto;"
+"    border-radius:14px;"
+"    display:inline-block;"
+"}"
+".file-list {margin:10px 0; display:inline-block; text-align:left;}"
+".qbtn {margin:6px 9px 6px 0; padding:10px 20px; background:#444; border:none; color:#fff; border-radius:8px; font-size:1.1em; cursor:pointer; display:inline-block;}"
+".qbtn:hover {background:#299a2c;}"
+"label {font-weight:600;}"
+"input[type=file],button {margin:.7em 0; padding:.5em 1.2em; font-size:1.1em; border-radius:5px; border:1px solid #555;}"
+"</style>"
+"</head><body><div class='centered'>";
 
 static const char* _pageFooter =
-    "<div style='margin:32px 0;'>"
-    "<form method='POST' action='/display_random'>"
-    "<button type='submit' style='font-size:1.2em;padding:8px 28px;'>Display Random Image</button>"
-    "</form></div>"
-    "<div style='font-size:1.1em;margin-bottom:8px;'>Darkone83 -=- Andr0 -=- Team Resurgent</div>"
     "<div style='font-style:italic;color:#444;' id='lostmsg'></div>"
     "<script>"
     "const lost=["
@@ -35,7 +63,7 @@ static const char* _pageFooter =
     "\"If you found this page, you’re probably beyond help!\""
     "];"
     "document.getElementById('lostmsg').innerText=lost[Math.floor(Math.random()*lost.length)];"
-    "</script></body></html>";
+    "</script></div></body></html>";
 
 // --- Forward declarations ---
 String buildFileManagerPage();
@@ -128,6 +156,8 @@ void FileMan::begin(AsyncWebServer& server) {
 // --- HTML page builder ---
 String buildFileManagerPage() {
     String html = _pageHeader;
+
+    html += "<div class='section'>";
     html += "<div style='width:100%;text-align:center;margin-bottom:1em'>"
             "<img src=\"/resource/TD.jpg\" alt=\"Type D\" style=\"width:128px;height:auto;display:block;margin:0 auto;\">"
             "</div>";
@@ -140,6 +170,7 @@ String buildFileManagerPage() {
     html += "<div style='font-size:1.1em; margin:12px 0;'>";
     html += "Space Used: " + String(used / 1024) + " KB / " + String(total / 1024) + " KB";
     html += " &mdash; Free: " + String(free / 1024) + " KB";
+    html += "</div>";
     html += "</div>";
 
     html += listBootImageSection();
@@ -158,8 +189,8 @@ String listBootImageSection() {
             String fn = f.name();
             if (fn.endsWith("boot.jpg") || fn.endsWith("boot.gif")) {
                 html += "<div>" + fn;
-                html += "<form method='POST' action='/delete_boot'><input type='hidden' name='file' value='" + fn + "'>";
-                html += "<button type='submit'>Delete</button></form></div>";
+                html += "<form method='POST' action='/delete_boot' style='display:inline;'><input type='hidden' name='file' value='" + fn + "'>";
+                html += "<button class='qbtn' type='submit'>Delete</button></form></div>";
                 hasBootImg = true;
             }
             f = root.openNextFile();
@@ -169,7 +200,7 @@ String listBootImageSection() {
     if (!hasBootImg)
         html += "<div>No boot image present.</div>";
     html += "<form method='POST' enctype='multipart/form-data' action='/upload_boot'>";
-    html += "<input type='file' name='upload' accept='.jpg,.gif' required><button type='submit'>Upload</button>";
+    html += "<input type='file' name='upload' accept='.jpg,.gif' required><button class='qbtn' type='submit'>Upload</button>";
     html += "</form></div>";
     return html;
 }
@@ -190,11 +221,11 @@ String listGallerySection() {
                 html += "<form style='display:inline;' method='POST' action='/delete_gallery'>";
                 html += "<input type='hidden' name='file' value='" + fn + "'>";
                 html += "<input type='hidden' name='folder' value='/jpg'>";
-                html += "<button type='submit'>Delete</button></form>";
+                html += "<button class='qbtn' type='submit'>Delete</button></form>";
                 html += "<form style='display:inline;' method='POST' action='/select_image'>";
                 html += "<input type='hidden' name='file' value='" + fn + "'>";
                 html += "<input type='hidden' name='folder' value='/jpg'>";
-                html += "<button type='submit'>Select</button></form><br>";
+                html += "<button class='qbtn' type='submit'>Select</button></form><br>";
                 hasJpg = true;
             }
             f = jpg.openNextFile();
@@ -203,7 +234,7 @@ String listGallerySection() {
     }
     if (!hasJpg) html += "No jpg files found.";
     html += "<form method='POST' enctype='multipart/form-data' action='/upload_jpg'>";
-    html += "<input type='file' name='upload' accept='.jpg' multiple required><button type='submit'>Upload</button></form></div>";
+    html += "<input type='file' name='upload' accept='.jpg' multiple required><button class='qbtn' type='submit'>Upload</button></form></div>";
 
     // GIFs
     html += "<div class='file-list'><strong>GIFs:</strong><br>";
@@ -218,11 +249,11 @@ String listGallerySection() {
                 html += "<form style='display:inline;' method='POST' action='/delete_gallery'>";
                 html += "<input type='hidden' name='file' value='" + fn + "'>";
                 html += "<input type='hidden' name='folder' value='/gif'>";
-                html += "<button type='submit'>Delete</button></form>";
+                html += "<button class='qbtn' type='submit'>Delete</button></form>";
                 html += "<form style='display:inline;' method='POST' action='/select_image'>";
                 html += "<input type='hidden' name='file' value='" + fn + "'>";
                 html += "<input type='hidden' name='folder' value='/gif'>";
-                html += "<button type='submit'>Select</button></form><br>";
+                html += "<button class='qbtn' type='submit'>Select</button></form><br>";
                 hasGif = true;
             }
             f = gif.openNextFile();
@@ -231,11 +262,12 @@ String listGallerySection() {
     }
     if (!hasGif) html += "No gif files found.";
     html += "<form method='POST' enctype='multipart/form-data' action='/upload_gif'>";
-    html += "<input type='file' name='upload' accept='.gif' multiple required><button type='submit'>Upload</button></form></div>";
+    html += "<input type='file' name='upload' accept='.gif' multiple required><button class='qbtn' type='submit'>Upload</button></form></div>";
 
     html += "<div style='margin:10px 0;'>";
-    html += "<form method='POST' action='/display_random_jpg' style='display:inline;'><button type='submit'>Random JPG</button></form> ";
-    html += "<form method='POST' action='/display_random_gif' style='display:inline;'><button type='submit'>Random GIF</button></form>";
+    html += "<form method='POST' action='/display_random_jpg' style='display:inline;'><button class='qbtn' type='submit'>Random JPG</button></form> ";
+    html += "<form method='POST' action='/display_random_gif' style='display:inline;'><button class='qbtn' type='submit'>Random GIF</button></form>";
+    html += "<form method='POST' action='/display_random' style='display:inline;'><button class='qbtn' type='submit'>Random Image</button></form>";
     html += "</div>";
 
     html += "</div>";
@@ -245,7 +277,7 @@ String listGallerySection() {
 // --- Resource Manager page builder [ADD] ---
 String buildResourceManagerPage() {
     String html = _pageHeader;
-    html += "<h1>Resource Manager</h1>";
+    html += "<div class='section'><h1>Resource Manager</h1>";
 
     // Space info
     size_t total = FFat.totalBytes();
@@ -257,7 +289,7 @@ String buildResourceManagerPage() {
     html += "</div>";
 
     // List files in /resource
-    html += "<div class='section'><h2>Manage Resource Files</h2>";
+    html += "<div class='file-list'><strong>Manage Resource Files</strong><br>";
     File res = FFat.open("/resource");
     bool hasResource = false;
     if (res) {
@@ -268,8 +300,8 @@ String buildResourceManagerPage() {
             html += "<form style='display:inline;' method='POST' action='/delete_resource'>";
             html += "<input type='hidden' name='file' value='" + fn + "'>";
             html += "<input type='hidden' name='folder' value='/resource'>";
-            html += "<button type='submit'>Delete</button></form>";
-            html += "<a href='/sd/resource?file=" + fn + "' target='_blank'>Download</a><br>";
+            html += "<button class='qbtn' type='submit'>Delete</button></form>";
+            html += "<a class='qbtn' href='/sd/resource?file=" + fn + "' target='_blank'>Download</a><br>";
             hasResource = true;
             f = res.openNextFile();
         }
@@ -277,9 +309,10 @@ String buildResourceManagerPage() {
     }
     if (!hasResource) html += "No resource files found.";
     html += "<form method='POST' enctype='multipart/form-data' action='/upload_resource'>";
-    html += "<input type='file' name='upload' multiple required><button type='submit'>Upload</button></form></div>";
+    html += "<input type='file' name='upload' multiple required><button class='qbtn' type='submit'>Upload</button></form></div>";
 
-    html += "<div style='margin:18px 0;'><a href='/'>Back to File Manager</a></div>";
+    html += "<div style='margin:18px 0;'><a class='qbtn' href='/'>Back to File Manager</a></div>";
+    html += "</div>";
     html += _pageFooter;
     return html;
 }
@@ -356,150 +389,34 @@ void handleDelete(AsyncWebServerRequest *request) {
     String file = request->arg("file");
     String path = folder.length() > 0 ? folder + "/" + file : "/boot/" + file;
 
-    Serial.printf("[FileMan] Attempting to delete file: '%s'\n", path.c_str());
-
-    File test = FFat.open(path);
-    if (!test) {
-        Serial.printf("[FileMan] File not found: '%s'\n", path.c_str());
-        request->send(404, "text/html", "<b>File not found.</b><br><a href='/'>Back</a>");
-        return;
-    }
-    if (test.isDirectory()) {
-        Serial.printf("[FileMan] Path is a directory, not a file: '%s'\n", path.c_str());
-        request->send(400, "text/html", "<b>Cannot delete a directory this way.</b><br><a href='/'>Back</a>");
-        test.close();
-        return;
-    }
-    test.close();
-
-    if (FFat.remove(path)) {
-        Serial.printf("[FileMan] File deleted: '%s'\n", path.c_str());
-        request->send(200, "text/html", "<b>File deleted.</b><br><a href='/'>Back</a>");
+    if (FFat.exists(path.c_str())) {
+        FFat.remove(path.c_str());
+        Serial.printf("[FileMan] Deleted: %s\n", path.c_str());
     } else {
-        Serial.printf("[FileMan] Delete failed (not found or error): '%s'\n", path.c_str());
-        request->send(500, "text/html", "<b>Delete failed.</b><br><a href='/'>Back</a>");
+        Serial.printf("[FileMan] File not found for delete: %s\n", path.c_str());
     }
+    String redirect = request->url().indexOf("resource") > 0 ? "/resource" : "/";
+    request->redirect(redirect);
 }
 
-// --- Display random image on TFT (button handler) ---
+// --- Display random image helpers/handlers (trivial stubs for this example) ---
 void handleDisplayRandom(AsyncWebServerRequest *request) {
-    String imagePath = getRandomGalleryImagePath();
-    if (imagePath.length() > 0) {
-        ImageDisplay::displayImage(imagePath);
-        Serial.printf("[FileMan] Displaying random image: %s\n", imagePath.c_str());
-        request->send(200, "text/html", "<b>Random image displayed on device!</b><br><a href='/'>Back</a>");
-    } else {
-        request->send(200, "text/html", "<b>No images found to display!</b><br><a href='/'>Back</a>");
-    }
+    ImageDisplay::displayRandomImage();
+    request->redirect("/");
 }
-
 void handleDisplayRandomJpg(AsyncWebServerRequest *request) {
-    String imagePath = getRandomJpgImagePath();
-    if (imagePath.length() > 0) {
-        ImageDisplay::displayImage(imagePath);
-        Serial.printf("[FileMan] Displaying random JPG: %s\n", imagePath.c_str());
-        request->send(200, "text/html", "<b>Random JPG displayed on device!</b><br><a href='/'>Back</a>");
-    } else {
-        request->send(200, "text/html", "<b>No JPG images found to display!</b><br><a href='/'>Back</a>");
-   }
+    ImageDisplay::displayRandomJpg();
+    request->redirect("/");
 }
-
 void handleDisplayRandomGif(AsyncWebServerRequest *request) {
-    String imagePath = getRandomGifImagePath();
-    if (imagePath.length() > 0) {
-        ImageDisplay::displayImage(imagePath);
-        Serial.printf("[FileMan] Displaying random GIF: %s\n", imagePath.c_str());
-        request->send(200, "text/html", "<b>Random GIF displayed on device!</b><br><a href='/'>Back</a>");
-    } else {
-        request->send(200, "text/html", "<b>No GIF images found to display!</b><br><a href='/'>Back</a>");
-    }
+    ImageDisplay::displayRandomGif();
+    request->redirect("/");
 }
 
 void handleSelectImage(AsyncWebServerRequest *request) {
     String folder = request->arg("folder");
     String file = request->arg("file");
-    String imagePath = folder + "/" + file;
-    if (FFat.exists(imagePath)) {
-        ImageDisplay::displayImage(imagePath);
-        Serial.printf("[FileMan] Displaying selected image: %s\n", imagePath.c_str());
-        request->send(200, "text/html", "<b>Selected image displayed on device!</b><br><a href='/'>Back</a>");
-    } else {
-        request->send(404, "text/html", "<b>File not found!</b><br><a href='/'>Back</a>");
-    }
-}
-
-// --- Pick a random gallery image path from /jpg or /gif ---
-String getRandomGalleryImagePath() {
-    std::vector<String> allImages;
-    File jpg = FFat.open("/jpg");
-    if (jpg) {
-        File f = jpg.openNextFile();
-        while (f) {
-            String fn = f.name();
-            if (fn.endsWith(".jpg")) {
-                allImages.push_back("/jpg/" + fn);
-            }
-            f = jpg.openNextFile();
-        }
-        jpg.close();
-    }
-    File gif = FFat.open("/gif");
-    if (gif) {
-        File f = gif.openNextFile();
-        while (f) {
-            String fn = f.name();
-            if (fn.endsWith(".gif")) {
-                allImages.push_back("/gif/" + fn);
-            }
-            f = gif.openNextFile();
-        }
-        gif.close();
-    }
-    if (!allImages.empty()) {
-        int r = random(0, allImages.size());
-        return allImages[r];
-    }
-    return "";
-}
-
-String getRandomJpgImagePath() {
-    std::vector<String> jpgs;
-    File jpg = FFat.open("/jpg");
-    if (jpg) {
-        File f = jpg.openNextFile();
-        while (f) {
-            String fn = f.name();
-            if (fn.endsWith(".jpg")) {
-                jpgs.push_back("/jpg/" + fn);
-            }
-            f = jpg.openNextFile();
-        }
-        jpg.close();
-    }
-    if (!jpgs.empty()) {
-        int r = random(0, jpgs.size());
-        return jpgs[r];
-    }
-    return "";
-}
-
-String getRandomGifImagePath() {
-    std::vector<String> gifs;
-    File gif = FFat.open("/gif");
-    if (gif) {
-        File f = gif.openNextFile();
-        while (f) {
-            String fn = f.name();
-            if (fn.endsWith(".gif")) {
-                gifs.push_back("/gif/" + fn);
-            }
-            f = gif.openNextFile();
-        }
-        gif.close();
-    }
-    if (!gifs.empty()) {
-        int r = random(0, gifs.size());
-        return gifs[r];
-    }
-    return "";
+    String path = folder + "/" + file;
+    ImageDisplay::displayImage(path);
+    request->redirect("/");
 }

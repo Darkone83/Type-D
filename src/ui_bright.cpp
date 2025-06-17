@@ -36,6 +36,10 @@ static void apply_brightness(BrightnessLevel level) {
 }
 
 static void drawBrightnessMenu() {
+    tft.setRotation(0);
+    tft.setTextDatum(middle_center);
+    tft.setTextFont(1);
+    tft.setTextSize(1);
     tft.fillScreen(TFT_BLACK);
 
     // Title

@@ -2,7 +2,6 @@
 #include <FFat.h>
 #include "disp_cfg.h"
 
-// Ported shadowed text helper
 void drawShadowedText(LGFX* tft, const String& text, int x, int y, uint16_t color, uint16_t shadow, int font) {
     tft->setTextFont(font);
     tft->setTextColor(shadow, TFT_BLACK);
@@ -13,34 +12,49 @@ void drawShadowedText(LGFX* tft, const String& text, int x, int y, uint16_t colo
 
 namespace xbox_status {
 
-void show(LGFX* tft, const XboxPacket& packet) {
+void show(LGFX* tft, const XboxStatus& packet) {
+    // ---- ENSURE DISPLAY STATE RESET ----
+    tft->setRotation(0);         // Always reset rotation
+    tft->setTextDatum(TL_DATUM); // Use TL_DATUM for this overlay
+    tft->setTextFont(1);         // Default font
+    tft->setTextSize(1);         // Default size
+
     tft->fillScreen(TFT_BLACK);
 
-    const int iconSize = 32;
-    const int rowH = 48;
-    const int startY = 8;
-    const int iconX = 8;
-    const int labelX = iconX + iconSize + 8;
-    const int valueX = labelX + 80;
+    // Pyramid layout
+    const int centerX = tft->width() / 2;
+    const int topY = 30;
+    const int bottomY = 130;
+    const int pyramidOffsetX = 70;
+    const int iconSize = 40;
+    const int labelFont = 2;
+    const int valueFont = 2;
 
     uint16_t labelCol = TFT_LIGHTGREY;
     uint16_t valueCol = 0x07E0;
 
-    struct StatusRow {
+    struct StatusItem {
         const char* icon;
         String label;
         String value;
-    } rows[] = {
-        { "/resources/fan.jpg",  "Fan",     String(packet.fanSpeed) },
-        { "/resources/cpu.jpg",  "CPU",     String(packet.cpuTemp) + "C" },
-        { "/resources/amb.jpg",  "Ambient", String(packet.ambientTemp) + "C" },
-        { "/resources/app.jpg",  "App",     String(packet.app) }
+        int x, y;
+    } items[] = {
+        // Fan: Top center
+        { "/resource/fan.jpg",  "Fan",     String(packet.fanSpeed), centerX, topY },
+        // CPU: Bottom left
+        { "/resource/cpu.jpg",  "CPU",     String(packet.cpuTemp) + "C", centerX - pyramidOffsetX, bottomY },
+        // Ambient: Bottom right
+        { "/resource/amb.jpg",  "Ambient", String(packet.ambientTemp) + "C", centerX + pyramidOffsetX, bottomY }
+        // App is commented/removed for now
+        // { "/resource/app.jpg",  "App",     String(packet.currentApp), ... }
     };
 
-    for (int i = 0; i < 4; ++i) {
-        int y = startY + i * rowH;
+    for (int i = 0; i < 3; ++i) {
+        int iconX = items[i].x - iconSize / 2;
+        int iconY = items[i].y;
 
-        File iconFile = FFat.open(rows[i].icon, "r");
+        // Draw icon centered
+        File iconFile = FFat.open(items[i].icon, "r");
         if (iconFile && iconFile.size() > 0) {
             size_t jpgSize = iconFile.size();
             uint8_t* jpgBuffer = (uint8_t*)heap_caps_malloc(jpgSize, MALLOC_CAP_SPIRAM);
@@ -48,7 +62,7 @@ void show(LGFX* tft, const XboxPacket& packet) {
                 int bytesRead = iconFile.read(jpgBuffer, jpgSize);
                 iconFile.close();
                 if ((size_t)bytesRead == jpgSize) {
-                    tft->drawJpg(jpgBuffer, jpgSize, iconX, y, iconSize, iconSize);
+                    tft->drawJpg(jpgBuffer, jpgSize, iconX, iconY, iconSize, iconSize);
                 }
                 heap_caps_free(jpgBuffer);
             } else {
@@ -56,12 +70,17 @@ void show(LGFX* tft, const XboxPacket& packet) {
             }
         } else {
             if (iconFile) iconFile.close();
-            // Optionally draw a blank or error icon here
         }
 
-        int textY = y + (iconSize / 2) - 12;
-        drawShadowedText(tft, rows[i].label, labelX, textY, labelCol, TFT_DARKGREY, 4);
-        drawShadowedText(tft, rows[i].value, valueX, textY, valueCol, TFT_DARKGREY, 4);
+        // Center label under icon
+        int labelY = iconY + iconSize + 2;
+        int labelX = items[i].x - tft->textWidth(items[i].label) / 2;
+        drawShadowedText(tft, items[i].label, labelX, labelY, labelCol, TFT_DARKGREY, labelFont);
+
+        // Center value under label
+        int valueY = labelY + 18;
+        int valueX = items[i].x - tft->textWidth(items[i].value) / 2;
+        drawShadowedText(tft, items[i].value, valueX, valueY, valueCol, TFT_DARKGREY, valueFont);
     }
 }
 

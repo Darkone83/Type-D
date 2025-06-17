@@ -26,6 +26,7 @@
 #include "ui_about.h"
 #include <Preferences.h>
 #include "cmd.h"
+#include "diag.h"
 
 #define WIFI_TIMEOUT 120
 #define BRIGHTNESS_PREF_KEY "brightness"
@@ -68,7 +69,7 @@ void displayPortalInfo() {
     tft.drawString("WiFi Portal Active", tft.width()/2, tft.height()/2 - 30);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
     tft.setTextSize(2);
-    tft.drawString("Type D setup", tft.width()/2, tft.height()/2);
+    tft.drawString("Type D Setup", tft.width()/2, tft.height()/2);
     tft.drawString("IP: 192.168.4.1", tft.width()/2, tft.height()/2 + 16);
     tft.setTextSize(1);
     tft.drawString("Connect below to setup.", tft.width()/2, tft.height()/2 + 32);
@@ -117,7 +118,6 @@ void setup() {
     tft.drawString(VERSION_TEXT, tft.width() / 2, tft.height() / 2 + 10);
     delay(1500);
 
-    // ----------- PATCH START -----------
     // WiFiMgr replaces WiFiManager
     WiFiMgr::begin();
     Serial.println("[Type D] WiFiMgr initialized.");
@@ -126,12 +126,12 @@ void setup() {
     if (!WiFiMgr::isConnected()) {
         displayPortalInfo();
     }
-    // ----------- PATCH END -------------
 
     // --- Start detection and web server modules ---
     Detect::begin();
     server8080.begin();
     FileMan::begin(server8080);
+    Diag::begin(server8080);
     cmd_init(&server8080, &tft);
     ESPNOWReceiver::begin();
     UI::begin(&tft);
@@ -215,4 +215,5 @@ void loop() {
 
     ImageDisplay::update();
     cmd_serial_poll();
+    Detect::loop();
 }
