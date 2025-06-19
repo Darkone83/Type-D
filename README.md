@@ -72,7 +72,8 @@ _Install these via Arduino Library Manager or from their GitHub releases:_
 5. **Open the `Type_D.ino` project** and verify it compiles.
 6. **Flash the firmware** to your module using USB.
 7. **Connect to WiFi** Connect the device via wifi and select your network with the custom portal.
-8. **Upload files** Log in to the File Manager via the web interface Http://<device-ip>:8080 and upload your media. 
+8. **Upload files** Log in to the File Manager via the web interface Http://"device-ip":8080 and upload your media. 
+9. **Upload Resource files** Resource files can be uploaded via the resource manager Http://"device-ip":/8080/resources.
 
 
    **Notes:**
