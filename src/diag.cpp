@@ -4,42 +4,65 @@
 #include <esp_system.h>
 #include <esp_heap_caps.h>
 #include "disp_cfg.h"
+#include <Update.h>
+#include <ESPAsyncWebServer.h>
 
 extern "C" {
 #include "esp_psram.h"
 }
 
 static const char* resourceFiles[] = {
-    "amb.jpg",
-    "app.jpg",
-    "cpu.jpg",
-    "DC.jpg",
-    "fan.jpg",
-    "TD.jpg",
-    "TR.jpg",
-    "XBS.jpg"
+    "amb.jpg", "app.jpg", "cpu.jpg", "DC.jpg",
+    "fan.jpg", "TD.jpg", "TR.jpg", "XBS.jpg"
 };
 
 static const char* resourceNames[] = {
-    "Ambient Temp icon",
-    "App Icon",
-    "CPU Icon",
-    "Darkone Customs Logo",
-    "Fan Icon",
-    "Type D Logo",
-    "Team Resurgent Logo",
-    "XBOX-Scene Logo"
+    "Ambient Temp icon", "App Icon", "CPU Icon", "Darkone Customs Logo",
+    "Fan Icon", "Type D Logo", "Team Resurgent Logo", "XBOX-Scene Logo"
 };
 
 // --- Format FFat (Erase) ---
 static void handleFormatFS(AsyncWebServerRequest *request) {
-    FFat.end(); // Unmount
+    FFat.end();
     bool ok = FFat.format();
     bool remount = FFat.begin();
-    String msg = ok && remount ? 
-        "<b>File system formatted and remounted!</b>" : 
+    String msg = ok && remount ?
+        "<b>File system formatted and remounted!</b>" :
         "<b>Format or remount failed. Please reboot device.</b>";
     request->send(200, "text/html", msg + "<br><a href='/diag'>Back to Diagnostics</a>");
+}
+
+// --- OTA Firmware Update Handler ---
+static void handleUpdate(AsyncWebServerRequest *request) {
+    bool hasError = Update.hasError();
+    String message = hasError ? "Update Failed!" : "Update Success! Rebooting...";
+    String html = "<!DOCTYPE html><html><head><title>OTA Result</title></head><body>";
+    html += "<h2>" + message + "</h2>";
+    html += "<a href='/diag'>Return to Diagnostics</a>";
+    html += "</body></html>";
+    request->send(200, "text/html", html);
+    if (!hasError) {
+        delay(1200);
+        ESP.restart();
+    }
+}
+
+static void handleUpdateUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+    if (!index) {
+        // Start update
+        Serial.printf("[OTA] Start firmware upload: %s\n", filename.c_str());
+        Update.begin(UPDATE_SIZE_UNKNOWN);
+    }
+    if (Update.write(data, len) != len) {
+        Serial.printf("[OTA] Write failed!\n");
+    }
+    if (final) {
+        if (Update.end(true)) {
+            Serial.println("[OTA] Update finished. Rebooting...");
+        } else {
+            Serial.printf("[OTA] Update error #%u\n", Update.getError());
+        }
+    }
 }
 
 // --- Main Diagnostics Page Handler ---
@@ -206,15 +229,21 @@ input[type=number] {width:60px; margin:0 4px 0 8px; padding:2px 4px;}
     for (auto& cmd : cmds) {
         html += "<button class='qbtn' onclick=\"location.href='" + String(cmd.url) + "';return false;\">" + String(cmd.label) + "</button>";
     }
-    // Format FFat
     html += "<button class='qbtn' style='background:#a22;margin-top:12px;' onclick=\"if(confirm('Erase all files?'))location.href='/diag?format=1';return false;\">Format File System</button>";
 
-    html += "<br></div>";
+    // --- OTA Firmware Update Field ---
+    html += R"(
+<hr style='margin:16px 0; border:0; border-top:1px solid #333;'>
+<h2>OTA Firmware Update</h2>
+<form method='POST' action='/update' enctype='multipart/form-data' style='margin:0;display:inline-block;'>
+  <input type='file' name='firmware' accept='.bin,.bin.gz' required style='margin-bottom:12px;'><br>
+  <button class='qbtn' type='submit' style='background:#1e90ff;'>Upload & Update</button>
+</form>
+)";
 
-    // --- FOOTER ---
+    html += "<br></div>";
     html += "<div class='footer'>2025 Darkone83 / Darkone Customs / Team Resurgent</div>";
 
-    // --- JS for brightness ---
     html += R"(
     <script>
     function setBright(e){
@@ -233,6 +262,8 @@ input[type=number] {width:60px; margin:0 4px 0 8px; padding:2px 4px;}
 namespace Diag {
 void begin(AsyncWebServer &server) {
     server.on("/diag", HTTP_GET, handleDiag);
+    // OTA endpoints:
+    server.on("/update", HTTP_POST, handleUpdate, handleUpdateUpload);
 }
 void handle() {
     // No periodic tasks needed yet.

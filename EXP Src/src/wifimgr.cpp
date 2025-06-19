@@ -6,6 +6,7 @@
 #include "led_stat.h"
 #include <vector>
 #include "esp_wifi.h"
+#include <Update.h> // For OTA
 
 static AsyncWebServer server(80);
 namespace WiFiMgr {
@@ -91,6 +92,7 @@ void startPortal() {
         .ssid-list li:hover {background:#2a4;}
         .btn-primary {background:#299a2c;color:white;}
         .btn-danger {background:#a22;color:white;}
+        .btn-ota {background:#265aa5;color:white;}
         .status {margin-top:1em;font-size:.95em;}
         label {display:block;margin-top:.5em;margin-bottom:.1em;}
     </style>
@@ -108,6 +110,7 @@ void startPortal() {
             <input type="password" id="pass" placeholder="WiFi Password">
             <button type="button" onclick="save()" class="btn-primary">Connect & Save</button>
             <button type="button" onclick="forget()" class="btn-danger">Forget WiFi</button>
+            <button type="button" onclick="window.location='/ota'" class="btn-ota">OTA Update</button>
         </form>
         <div class="status" id="status">Status: ...</div>
     </div>
@@ -156,6 +159,73 @@ void startPortal() {
         )rawliteral";
         request->send(200, "text/html", page);
     });
+
+    // === OTA PAGE ===
+    server.on("/ota", HTTP_GET, [](AsyncWebServerRequest *request){
+        String page = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OTA Update</title>
+    <meta name="viewport" content="width=320,initial-scale=1">
+    <style>
+        body {background:#111;color:#EEE;font-family:sans-serif;}
+        .container {max-width:340px;margin:24px auto;background:#222;padding:2em;border-radius:8px;box-shadow:0 0 16px #0008;}
+        input[type=file],button {width:100%;box-sizing:border-box;margin:.7em 0;padding:.5em;font-size:1.1em;border-radius:5px;border:1px solid #555;}
+        .btn-update {background:#265aa5;color:white;}
+        .status {margin-top:1em;font-size:.95em;}
+        label {display:block;margin-top:.5em;margin-bottom:.1em;}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>OTA Update</h2>
+        <form id="otaForm" method="POST" action="/update" enctype="multipart/form-data">
+            <label>Select firmware .bin file</label>
+            <input type="file" name="firmware">
+            <button type="submit" class="btn-update">Upload & Flash</button>
+        </form>
+        <div id="otaStatus" class="status"></div>
+        <button onclick="window.location='/'" class="btn-update" style="margin-top:14px;">Back to WiFi Setup</button>
+    </div>
+</body>
+</html>
+        )rawliteral";
+        request->send(200, "text/html", page);
+    });
+
+    // === OTA FIRMWARE UPLOAD HANDLER ===
+    server.on("/update", HTTP_POST,
+        [](AsyncWebServerRequest *request){},
+        [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+            static bool updateError = false;
+            if (!index) {
+                Serial.printf("[OTA] Start update: %s\n", filename.c_str());
+                updateError = false;
+                if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { // start with max available size
+                    Update.printError(Serial);
+                    updateError = true;
+                }
+            }
+            if (!updateError && !Update.hasError()) {
+                if (Update.write(data, len) != len) {
+                    Update.printError(Serial);
+                    updateError = true;
+                }
+            }
+            if (final) {
+                if (!updateError && Update.end(true)) {
+                    Serial.println("[OTA] Update Success. Rebooting...");
+                    request->send(200, "text/plain", "Update complete! Rebooting...");
+                    delay(1200);
+                    ESP.restart();
+                } else {
+                    Update.printError(Serial);
+                    request->send(200, "text/plain", "Update failed! " + String(Update.errorString()));
+                }
+            }
+        }
+    );
 
     server.on("/status", HTTP_GET, [](AsyncWebServerRequest *request){
         String stat;
