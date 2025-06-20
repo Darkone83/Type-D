@@ -3,7 +3,7 @@
 
 // --- Pin config ---
 #define RGB_PIN 21
-#define RGB_BRIGHTNESS 10 // Reasonable for status; can tweak
+#define RGB_BRIGHTNESS 50 // Reasonable for status; can tweak
 
 // --- Internal state ---
 static LedStatus currentStatus = LedStatus::Booting;
@@ -30,8 +30,8 @@ void LedStat::setStatus(LedStatus status) {
         case LedStatus::Booting:        setLedColor(RGB_BRIGHTNESS, RGB_BRIGHTNESS, RGB_BRIGHTNESS); break; // White
         case LedStatus::WifiConnected:  setLedColor(0, RGB_BRIGHTNESS, 0); break;   // Green
         case LedStatus::WifiFailed:     setLedColor(RGB_BRIGHTNESS, 0, 0); break;   // Red
-        case LedStatus::Portal:         setLedColor(128, 0, 255); break;              // Initial purple
-        case LedStatus::UdpTransmit:    setLedColor(RGB_BRIGHTNESS, 32, 0); break;  // Initial orange
+        case LedStatus::Portal:         setLedColor(16, 0, 16); break;              // Initial purple
+        case LedStatus::UdpTransmit:    setLedColor(RGB_BRIGHTNESS, 40, 0); break;  // Initial orange
     }
 }
 
