@@ -43,6 +43,8 @@
 
 - **Display with bezels** <a href="https://www.darkonecustoms.com/store/p/type-d-screen-kit">Darkone Customs (Type S)</a>
 
+- **Expansion Module** <a href="https://www.darkonecustoms.com/store/p/type-d-telemetry-expansion">Darkone Customs</a>
+
 
 ---
 
