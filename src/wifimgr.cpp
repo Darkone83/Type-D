@@ -86,9 +86,6 @@ void startPortal() {
         body {background:#111;color:#EEE;font-family:sans-serif;}
         .container {max-width:320px;margin:24px auto;background:#222;padding:2em;border-radius:8px;box-shadow:0 0 16px #0008;}
         input,select,button {width:100%;box-sizing:border-box;margin:.7em 0;padding:.5em;font-size:1.1em;border-radius:5px;border:1px solid #555;}
-        .ssid-list {list-style:none;padding:0;margin:0 0 1em 0;}
-        .ssid-list li {background:#333;margin:3px 0;padding:.5em;border-radius:5px;cursor:pointer;text-align:left;}
-        .ssid-list li:hover {background:#2a4;}
         .btn-primary {background:#299a2c;color:white;}
         .btn-danger {background:#a22;color:white;}
         .status {margin-top:1em;font-size:.95em;}
@@ -100,10 +97,12 @@ void startPortal() {
         <div style="width:100%;text-align:center;margin-bottom:1em">
             <img src="/resource/TD.jpg" alt="Type D" style="width:128px;height:auto;display:block;margin:0 auto;">
         </div>
-        <ul class="ssid-list" id="ssidList"><li>Please select a network</li></ul>
-        <form id="wifiForm">
+        <form id="wifiForm" onsubmit="event.preventDefault(); save();">
             <label>WiFi Network</label>
-            <input type="text" id="ssid" placeholder="SSID">
+            <select id="ssidDropdown" onchange="document.getElementById('ssid').value=this.value" style="margin-bottom:1em;">
+                <option value="">Please select a network</option>
+            </select>
+            <input type="text" id="ssid" placeholder="SSID" required style="margin-bottom:1em;">
             <label>Password</label>
             <input type="password" id="pass" placeholder="WiFi Password">
             <button type="button" onclick="save()" class="btn-primary">Connect & Save</button>
@@ -114,33 +113,32 @@ void startPortal() {
     <script>
         function scan() {
             fetch('/scan').then(r => r.json()).then(list => {
-                let ul = document.getElementById('ssidList');
-                if (list.length === 0) {
-                    ul.innerHTML = '<li>Please select a network</li>';
-                } else {
-                    ul.innerHTML = '';
-                    list.forEach(ssid => {
-                        let li = document.createElement('li');
-                        li.textContent = ssid;
-                        li.onclick = () => document.getElementById('ssid').value = ssid;
-                        ul.appendChild(li);
-                    });
-                }
-            }).catch(() => {
-                document.getElementById('ssidList').innerText = 'Scan failed';
+                let dropdown = document.getElementById('ssidDropdown');
+                dropdown.innerHTML = '';
+                let opt = document.createElement('option');
+                opt.value = '';
+                opt.text = 'Please select a network';
+                dropdown.appendChild(opt);
+                list.forEach(ssid => {
+                    let o = document.createElement('option');
+                    o.value = ssid;
+                    o.text = ssid;
+                    dropdown.appendChild(o);
+                });
             });
         }
 
         function save() {
-            let ssid = document.getElementById('ssid').value;
-            let pass = document.getElementById('pass').value;
-            fetch('/save', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ssid:ssid,pass:pass})
-            }).then(r => r.text()).then(t => {
-                document.getElementById('status').innerText = t;
-            });
+            let s = document.getElementById('ssid').value.trim();
+            let p = document.getElementById('pass').value;
+            if (!s) {
+                document.getElementById('status').innerText = "Please select or enter a network.";
+                return;
+            }
+            fetch('/connect?ssid=' + encodeURIComponent(s) + '&pass=' + encodeURIComponent(p))
+                .then(r => r.text()).then(t => {
+                    document.getElementById('status').innerText = t;
+                });
         }
 
         function forget() {
@@ -151,7 +149,6 @@ void startPortal() {
             });
         }
 
-        // Run scan on page load
         window.onload = scan;
     </script>
 </body>
@@ -209,6 +206,7 @@ void startPortal() {
     });
 
     server.on("/scan", HTTP_GET, [](AsyncWebServerRequest *request){
+        WiFi.mode(WIFI_AP_STA);
         int n = WiFi.scanNetworks();
         String json = "[";
         for (int i = 0; i < n; ++i) {
@@ -264,10 +262,9 @@ void loop() {
             state = State::CONNECTED;
             dnsServer.stop();
             WiFi.softAPdisconnect(true);
-                Serial.println("[WiFiMgr] WiFi connected.");
-                Serial.print("[WiFiMgr] IP Address: ");
-                Serial.println(WiFi.localIP());  
-
+            Serial.println("[WiFiMgr] WiFi connected.");
+            Serial.print("[WiFiMgr] IP Address: ");
+            Serial.println(WiFi.localIP());
         } else if (millis() - lastAttempt > retryDelay) {
             connectAttempts++;
             if (connectAttempts >= maxAttempts) {

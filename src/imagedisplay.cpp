@@ -293,6 +293,7 @@ void displayRandomImage() {
     for (auto& f : gifList) randomStack.push_back(f);
     if (randomStack.empty()) {
         Serial.println("[ImageDisplay] No images to display.");
+        if (_tft) drawNoImagesMessage(_tft); // <--- ADDED
         return;
     }
     std::shuffle(randomStack.begin(), randomStack.end(), rng);
@@ -354,6 +355,10 @@ void loop() {
 void update() {
     if (paused) return; 
     if (currentMode != MODE_RANDOM) return;
+    if (randomStack.empty()) {  // <--- ADDED
+        if (_tft) drawNoImagesMessage(_tft);
+        return;
+    }
     if (!currentIsGif) {
         if (millis() - lastImageChange > 2000) {
             imgIndex = (imgIndex + 1) % randomStack.size();
