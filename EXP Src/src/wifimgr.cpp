@@ -87,9 +87,6 @@ void startPortal() {
         body {background:#111;color:#EEE;font-family:sans-serif;}
         .container {max-width:320px;margin:24px auto;background:#222;padding:2em;border-radius:8px;box-shadow:0 0 16px #0008;}
         input,select,button {width:100%;box-sizing:border-box;margin:.7em 0;padding:.5em;font-size:1.1em;border-radius:5px;border:1px solid #555;}
-        .ssid-list {list-style:none;padding:0;margin:0 0 1em 0;}
-        .ssid-list li {background:#333;margin:3px 0;padding:.5em;border-radius:5px;cursor:pointer;text-align:left;}
-        .ssid-list li:hover {background:#2a4;}
         .btn-primary {background:#299a2c;color:white;}
         .btn-danger {background:#a22;color:white;}
         .btn-ota {background:#265aa5;color:white;}
@@ -102,10 +99,12 @@ void startPortal() {
         <div style="width:100%;text-align:center;margin-bottom:1em">
             <span style="font-size:2em;font-weight:bold;">Type D EXP Setup</span>
         </div>
-        <ul class="ssid-list" id="ssidList"><li>Please select a network</li></ul>
         <form id="wifiForm">
             <label>WiFi Network</label>
-            <input type="text" id="ssid" placeholder="SSID">
+            <select id="ssidDropdown" style="margin-bottom:1em;">
+                <option value="">Please select a network</option>
+            </select>
+            <input type="text" id="ssid" placeholder="SSID" style="margin-bottom:1em;">
             <label>Password</label>
             <input type="password" id="pass" placeholder="WiFi Password">
             <button type="button" onclick="save()" class="btn-primary">Connect & Save</button>
@@ -117,20 +116,28 @@ void startPortal() {
     <script>
         function scan() {
             fetch('/scan').then(r => r.json()).then(list => {
-                let ul = document.getElementById('ssidList');
-                if (list.length === 0) {
-                    ul.innerHTML = '<li>Please select a network</li>';
-                } else {
-                    ul.innerHTML = '';
-                    list.forEach(ssid => {
-                        let li = document.createElement('li');
-                        li.textContent = ssid;
-                        li.onclick = () => document.getElementById('ssid').value = ssid;
-                        ul.appendChild(li);
-                    });
-                }
+                let dropdown = document.getElementById('ssidDropdown');
+                dropdown.innerHTML = '';
+                let defaultOpt = document.createElement('option');
+                defaultOpt.value = '';
+                defaultOpt.text = 'Please select a network';
+                dropdown.appendChild(defaultOpt);
+                list.forEach(ssid => {
+                    let opt = document.createElement('option');
+                    opt.value = ssid;
+                    opt.text = ssid;
+                    dropdown.appendChild(opt);
+                });
+                dropdown.onchange = function() {
+                    document.getElementById('ssid').value = dropdown.value;
+                };
             }).catch(() => {
-                document.getElementById('ssidList').innerText = 'Scan failed';
+                let dropdown = document.getElementById('ssidDropdown');
+                dropdown.innerHTML = '';
+                let opt = document.createElement('option');
+                opt.value = '';
+                opt.text = 'Scan failed';
+                dropdown.appendChild(opt);
             });
         }
         setInterval(scan, 2000);
