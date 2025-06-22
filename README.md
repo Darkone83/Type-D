@@ -3,8 +3,9 @@
 <div align=center>
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/logo.jpg">
 
-  
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Types1.png"><img src="https://github.com/Darkone83/Type-D/blob/main/images/Types2.png">
+
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Duke1.jpg"><img src="https://github.com/Darkone83/Type-D/blob/main/images/Duke2.jpg">  
 </div>
 
 **Type D** is a two-part open-source system for the original Xbox, bringing a modern, customizable, and fully themed display experience to your console. It replaces the stock jewel with a 240x240 TFT touch display, controlled by an ESP32-S3, and optionally pairs with the Type D Expansion module for live Xbox status telemetry.
@@ -35,7 +36,7 @@
 
 - **Type S** Drill guide, and bezel plate (In the STL folder)
 
-- **Duke** Cutting template, and support plate (Coming soon!)
+- **Duke** Cutting template, and spacer (In the STL folder)
 
 ## Purchasing
 
@@ -114,11 +115,6 @@ Usage: gif_convert.py mygif.gif cool.gif
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Board%20prep/Wire%20zoum%20out.png">
 </div>
 
-4 **Install Bezel** Peel the release paper from the screen and adhere it to the bezel
-<div align=center>
-  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Board%20prep/Bezel.png">
-</div>
-
 ### Type S:
 
 **Notice** Beyond this point, you will be physically modifying your controller. This is not reversible, as you will have to drill holes in your shell. It's strongly advised that you use a shell that you're potentially alright with modifying.
@@ -129,7 +125,13 @@ Usage: gif_convert.py mygif.gif cool.gif
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/Type%20S%20Kit.png">
 </div>
 
-1 **Remove jewel** Remove your jewel with a spudger or soft tool
+1 **Install Bezel** Peel the release paper from the screen and adhere it to the bezel
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Board%20prep/Bezel.png">
+</div>
+
+2 **Remove jewel** Remove your jewel with a spudger or soft tool
+
 <div align=center>
   Before:
 
@@ -140,12 +142,12 @@ Usage: gif_convert.py mygif.gif cool.gif
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/Controller%20Front%20No%20Jewel.png">
 </div>
 
-2 **Unscrew controller** Remove all screws shown in the image below
+3 **Unscrew controller** Remove all screws shown in the image below
 <div align=center>
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/Remove%20screws.png">
 </div>
 
-3 **Prep power points** Remove the PCB and prep your positive and negative points 
+4 **Prep power points** Remove the PCB and prep your positive and negative points 
 <div align=center>
   PCB Back:
 
@@ -156,31 +158,84 @@ Usage: gif_convert.py mygif.gif cool.gif
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/Posneg.png">
 </div>
 
-4 **Place Drill Guide** Take your time with this step and ensure you have good alignment
+5 **Place Drill Guide** Take your time with this step and ensure you have good alignment
 <div align=center>
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/Drill%20guide.png">
 </div>
 
-5 ** Drill holes** The point of no return, make sure you are 100% this is what you want
+6 ** Drill holes** The point of no return, make sure you are 100% this is what you want
 <div align=center>
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/Drilled.png">
 </div>
 
-6 **Secure Display** Install screws and secure the display to the controller
+7 **Secure Display** Install screws and secure the display to the controller
 <div align=center>
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/Installed.png">
 </div>
 
-7 **Trim and solder conductors** Trim and solder your conductors to the correct positive and negative points. It's highly advised to test at this point
+8 **Trim and solder conductors** Trim and solder your conductors to the correct positive and negative points. It's highly advised to test at this point
 <div align=center>
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Type%20S%20install/Soldered.png">
 </div>
 
-8 **Reassembly** Reassemble your controller and enjoy!
+9 **Reassembly** Reassemble your controller and enjoy!
 
 ### Duke:
 
-Coming Soon!
+1 **Addiitional Board Prep** Remove the 4 screw standoff's this can be done with a solering iron but will be required if you don't want to trim the top memory card port.
+
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Board%20prep/Post%20Remove.png">
+</div>
+2 **Disassemble the shell** Disassemble your Duke controller. Please note that the plastic is very brittle on these controllers; go slow and take your time.
+
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Duke%20install/Screws.jpg">
+</div>
+
+3 **Front faceplate prep** Remove your front faceplate on the back; you will see a tab that sticks up, which will need to be trimmed, revealing the snap to the top jewel of the controller. Use a screw driver to gently push the tab and remove the jewl from your controller.
+
+<div align=center>
+Front:
+
+<img src="https://github.com/Darkone83/Type-D/blob/main/images/Duke%20install/Faceplate.jpg">
+
+Area to cut first:
+
+<img src="https://github.com/Darkone83/Type-D/blob/main/images/Duke%20install/Cut%20Tab.jpg">
+</div>
+
+4 **Cut the opening** Place the <a href="https://github.com/Darkone83/Type-D/blob/main/stl/Duke%20Guide.stl">cutting guide</a> where your jewel used to reside and mark your area to cut. For this install, I opted to go with a hot knife as the plastic is already extremely brittle. go slow and take your time. test for the display along the way and trim as needed.
+
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Duke%20install/Hole.jpg">
+</div>
+
+5 **Install spacer** Install your spacer with some super glue. The <a href="http://github.com/Darkone83/Type-D/blob/main/stl/Duke%20Spacer.stl">spacer</a> can be downloaded in the STL folder. Trim the shell as needed.
+
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Duke%20install/Spacer.jpg">
+</div>
+
+6 **Install display** Fit your display by removing the release paper and adhering it in place. Take your time with alignment.
+
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Duke%20install/Install.jpg">
+</div>
+
+7 **Locate power** Locate Positive and Negative on your controller. Reference the image below.
+
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Duke%20install/Posneg.jpg">
+</div>
+
+8 ** Install power wires** Trim and install the conductors as seen below.
+
+<div align=center>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Duke%20install/Wire%20Install.jpg">
+</div>
+
+9 **Reassemble and enjoy** Reassemble your controller and enjoy!
 
 ## WiFi Connection:
 
