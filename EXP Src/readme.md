@@ -31,7 +31,7 @@ Waveshare ESP32-S3 Zero
 
 ## Installation
 
-Solder SDA from the LCP header to Pin 7, SCL from the LPC to pin 6, GND to GNV, and 5v from the LPV to 5v on the S3
+Solder SDA from the LCP header to Pin 7, SCL from the LPC to pin 6, GND to GND, and 5v from the LPC (or any other source) to 5v on the S3
 
 Mount to the RF shield with VHB tape or foam tape
 
