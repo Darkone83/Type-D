@@ -45,5 +45,5 @@ Locate and join the Type D EXP Setup network, and join your preferred wifi netwo
 - Blinking Purple: WiFi portal active
 - Green: connected to WiFi
 - Red: Wifi connection failed
-- Orange blink: UPD Packet send *not fully working*
+- Orange blink: UPD Packet send *now working* will show the status approx every 5 seconds
 
