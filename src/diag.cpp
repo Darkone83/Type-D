@@ -55,7 +55,9 @@ static void handleUpdateUpload(AsyncWebServerRequest *request, String filename, 
     }
     if (Update.write(data, len) != len) {
         Serial.printf("[OTA] Write failed!\n");
+        Update.abort();
     }
+    yeild();
     if (final) {
         if (Update.end(true)) {
             Serial.println("[OTA] Update finished. Rebooting...");

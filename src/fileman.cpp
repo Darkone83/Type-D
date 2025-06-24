@@ -376,6 +376,7 @@ void handleUpload(AsyncWebServerRequest *request, String filename, size_t index,
     }
     if (uploadFile) {
         uploadFile.write(data, len);
+        yeild();
     }
     if (final) {
         if (uploadFile) uploadFile.close();
