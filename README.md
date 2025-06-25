@@ -32,7 +32,7 @@
 
 **Amazon** <a href="https://www.amazon.com/dp/B0DLNMG2KP?ref=ppx_yo2ov_dt_b_fed_asin_title">1.28 inch ESP32-Development board</a>
 
-- **Mounting Screws** 4 2x10 mm pan head screws
+- **Mounting Screws** 4 2x10 mm pan head screws (only required for the Type S installation)
 
 - **Type S** Drill guide, and bezel plate (In the STL folder)
 
