@@ -95,24 +95,46 @@ Usage: gif_convert.py mygif.gif cool.gif
 
 1 **Solder jumper** You will need to solder the jumper pad to the leg directly next to it to bypass the power button. See the Image below for reference.
 <div align=center>
+
+  ESP32
+  
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Board%20prep/Jumper%20location.png">
+
+  ESP32-S3
+  
+  <img src="">
 </div>
 
 2 **Locate power**: Reference the image below for positive and negative terminals. Pre-tin the negative pad with a bit of flux and decent solder.
 <div align=center>
+
+  ESP32
+  
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Board%20prep/Posneg.png">
+
+  ESP32-S3
+  
+  <img src="">
 </div>
 
 3 ** Install power wires** Trim your leads as short as possible and solder your positive and negative conductors. Silicone sheathed wire is recommended for routing and flexibility.
 <div align=center>
   
-  Zoomed in:
+  Zoomed in ESP32:
 
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Board%20prep/Wire%20Zoom.png">
 
-  Zoomed out:
+  Zoomed out ESP32:
 
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Board%20prep/Wire%20zoum%20out.png">
+
+  Zoomed in ESP32-S3:
+
+  <img src="">
+
+  Zoomed out ESP32-S3:
+
+  <img src="">
 </div>
 
 ### Type S:
