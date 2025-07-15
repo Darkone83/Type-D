@@ -204,7 +204,7 @@ Usage: gif_convert.py mygif.gif cool.gif
 
 ### Duke:
 
-1 **Addiitional Board Prep** Remove the 4 screw standoff's this can be done with a solering iron but will be required if you don't want to trim the top memory card port.
+1 **Additional Board Prep** Remove the 4 screw standoffs. This can be done with a soldering iron, but will be required if you don't want to trim the top memory card port.
 
 <div align=center>
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Board%20prep/Post%20Remove.png">
@@ -215,7 +215,7 @@ Usage: gif_convert.py mygif.gif cool.gif
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Duke%20install/Screws.jpg">
 </div>
 
-3 **Front faceplate prep** Remove your front faceplate on the back; you will see a tab that sticks up, which will need to be trimmed, revealing the snap to the top jewel of the controller. Use a screw driver to gently push the tab and remove the jewl from your controller.
+3 **Front faceplate prep** Remove your front faceplate on the back; you will see a tab that sticks up, which will need to be trimmed, revealing the snap to the top jewel of the controller. Use a screwdriver to gently push the tab and remove the jewel from your controller.
 
 <div align=center>
 Front:
@@ -227,7 +227,7 @@ Area to cut first:
 <img src="https://github.com/Darkone83/Type-D/blob/main/images/Duke%20install/Cut%20Tab.jpg">
 </div>
 
-4 **Cut the opening** Place the <a href="https://github.com/Darkone83/Type-D/blob/main/stl/Duke%20Guide.stl">cutting guide</a> where your jewel used to reside and mark your area to cut. For this install, I opted to go with a hot knife as the plastic is already extremely brittle. go slow and take your time. test for the display along the way and trim as needed.
+4 **Cut the opening** Place the <a href="https://github.com/Darkone83/Type-D/blob/main/stl/Duke%20Guide.stl">cutting guide</a> where your jewel used to reside and mark your area to cut. For this install, I opted to go with a hot knife as the plastic is already extremely brittle. Go slow and take your time. Test for the display fitment along the way and trim as needed.
 
 <div align=center>
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Duke%20install/Hole.jpg">
