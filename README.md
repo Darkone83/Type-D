@@ -102,7 +102,7 @@ Usage: gif_convert.py mygif.gif cool.gif
 
   ESP32-S3
   
-  <img src="">
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Board%20prep/S3_PWR.JPG">
 </div>
 
 2 **Locate power**: Reference the image below for positive and negative terminals. Pre-tin the negative pad with a bit of flux and decent solder.
@@ -114,7 +114,7 @@ Usage: gif_convert.py mygif.gif cool.gif
 
   ESP32-S3
   
-  <img src="">
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Board%20prep/S3_PWR_POS_NEG.JPG">
 </div>
 
 3 ** Install power wires** Trim your leads as short as possible and solder your positive and negative conductors. Silicone sheathed wire is recommended for routing and flexibility.
@@ -130,12 +130,7 @@ Usage: gif_convert.py mygif.gif cool.gif
 
   Zoomed in ESP32-S3:
 
-  <img src="">
-
-  Zoomed out ESP32-S3:
-
-  <img src="">
-</div>
+  <img src="https://github.com/Darkone83/Type-D/blob/main/images/Board%20prep/S3_PWR_WIRE.JPG">
 
 ### Type S:
 
