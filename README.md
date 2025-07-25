@@ -46,6 +46,8 @@
 
 - **Expansion Module** <a href="https://www.darkonecustoms.com/store/p/type-d-telemetry-expansion">Darkone Customs</a>
 
+- **Memcard PCB** <a href="https://www.darkonecustoms.com/store/p/type-d-memcard-pcb">Darkone Customs</a>. Installation instructions can be found <a href="https://github.com/Darkone83/Type-D/tree/main/pcb">here</a>.
+
 
 ---
 
