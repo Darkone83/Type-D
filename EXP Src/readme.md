@@ -26,6 +26,7 @@ Waveshare ESP32-S3 Zero
 5. **Build and Upload**  
    - Open `Type_D_EXP.ino` in Arduino IDE.  
    - Click **Upload**.
+   - **If your using a clone board** : adjust line 17 in led_stat.cpp by default ir reads `neopixelWrite(RGB_PIN, g, r, b);` change it to `neopixelWrite(RGB_PIN, r, g, b);` in order top get proper RGB colors on clone boards.
 
 #### Web Flasher: [![Type D EXP Web Flasher](https://img.shields.io/badge/Web%20Flasher-Type%20D%20EXP-green?logo=esp32&logoColor=white)](https://darkone83.github.io/type-d-exp.github.io/)
 
