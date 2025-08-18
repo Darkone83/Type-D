@@ -10,6 +10,10 @@ namespace SMBusExt {
         int trayState;
         int avPackState;
         int picVer;
+        int xboxVer;
+        int videoWidth;
+        int videoHeight;
+        int encoderType;
     };
 
     // Send the current extended status via UDP
