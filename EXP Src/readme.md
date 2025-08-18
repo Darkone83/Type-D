@@ -30,6 +30,10 @@ Waveshare ESP32-S3 Zero
 
 #### Web Flasher: [![Type D EXP Web Flasher](https://img.shields.io/badge/Web%20Flasher-Type%20D%20EXP-green?logo=esp32&logoColor=white)](https://darkone83.github.io/type-d-exp.github.io/)
 
+## PCB
+
+You can grab the PCB for a cleaner mounting solution in the PCB folder.
+
 ## Installation
 
 Solder SDA from the LCP header to Pin 7, SCL from the LPC to pin 6, GND to GND, and 5v from the LPC (or any other source) to 5v on the S3
