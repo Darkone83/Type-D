@@ -35,6 +35,8 @@ void setup() {
 void loop() {
     LedStat::loop();
     WiFiMgr::loop();
+    
+    Cache_Manager::pollTitleUdp();
 
     // 1. SMBus Polling (every 1s)
     static unsigned long lastPoll = 0;
