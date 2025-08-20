@@ -1,3 +1,7 @@
+<div align=center>
+<img src="https://github.com/Darkone83/Type-D/blob/main/EXP%20Src/PC%20App/images/demo.png" height=400 width=400><img src="https://github.com/Darkone83/Type-D/blob/main/EXP%20Src/PC%20App/images/demo2.png" height=400 width=400>
+</div>
+
 # Usage
 
 The app needs to be running on a computer thats on the same network as the Type-D Telemetry unit. Once detected the stast will auto fill.
