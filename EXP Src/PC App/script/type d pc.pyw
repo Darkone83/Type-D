@@ -10,11 +10,19 @@
 # - Realistic 7-segment digits (bevel)
 # - °C/°F toggle, min/max
 # - Graph mode toggle for FAN/CPU/AMBIENT (cur/min/max)
+# - NEW: PNG capture, EEPROM→clipboard (incl. RAW), CSV logging, window icon
 
 import socket, struct, threading, base64, binascii
 import tkinter as tk
-import time
-from tkinter import ttk
+import time, os, sys, csv
+from tkinter import ttk, filedialog, messagebox
+
+# Optional Pillow for screen capture
+try:
+    from PIL import ImageGrab
+    PIL_AVAILABLE = True
+except Exception:
+    PIL_AVAILABLE = False
 
 # ---- Ports / wire formats ----
 PORT_MAIN = 50504
@@ -48,25 +56,20 @@ BEVEL_SH   = "#0c3a0c"
 BEVEL_W    = 2
 
 # ---- EEPROM decode (PRIMARY MAP + FALLBACKS) ----
-# Matches your sample dump (can decode RAW reliably).
 EE_OFFSETS = {
     "HDD_KEY": (0x04, 16),
     "MAC":     (0x40, 6),
-    "REGION":  (0x58, 1),   # 0:NTSC-U 1:NTSC-J 2:PAL
+    "REGION":  (0x58, 1),
     "SERIAL":  (0x34, 12),
 }
-
-# Known fallbacks seen in the wild (kept for robustness)
 EE_FALLBACKS = [
     {"HDD_KEY": (0x50, 16), "MAC": (0x3C, 6), "REGION": (0x58, 1), "SERIAL": (0x14, 12)},
     {"HDD_KEY": (0x04, 16), "MAC": (0x24, 6), "REGION": (0x58, 1), "SERIAL": (0x09, 12)},
 ]
-
 EE_REGION_MAP = {0x00: "NTSC-U", 0x01: "NTSC-J", 0x02: "PAL"}
 
 # ---- SMBus decode tables ----
 TRAY_LABELS = {0x00: "Closed", 0x01: "Open", 0x02: "Busy"}
-
 AVPACK_TABLE_PRIMARY = {
     0x00: "SCART", 0x01: "HDTV (Component)", 0x02: "VGA", 0x03: "RFU",
     0x04: "Advanced (S-Video)", 0x05: "Undefined",
@@ -97,10 +100,8 @@ def mode_from_resolution(width: int, height: int, av_raw: int):
     except Exception:
         return None
     if w <= 0 or h <= 0: return None
-    if w >= 1900 and h == 1080:
-        return "1080i"
-    if w == 1280 and h == 720:
-        return "720p"
+    if w >= 1900 and h == 1080: return "1080i"
+    if w == 1280 and h == 720:  return "720p"
     if (w in (640, 704, 720)) and h == 480:
         return "480p" if av_is_hd(av_raw) else "480i"
     if (w in (720,)) and h == 576:
@@ -113,15 +114,13 @@ ENCODER_LABELS = {0x45:"Conexant", 0x6A:"Focus", 0x70:"Xcalibur"}
 
 def decode_xboxver(val: int):
     v = int(val)
-    if v < 0 or (v & 0xFF) == 0xFF:
-        return "Not reported"
+    if v < 0 or (v & 0xFF) == 0xFF: return "Not reported"
     return XBOXVER_LABELS.get(v & 0xFF, f"Unknown ({v})")
 
 def decode_encoder(val: int):
     v = int(val) & 0xFF
     return ENCODER_LABELS.get(v, f"Unknown (0x{v:02X})")
 
-# helper to assign enc/width/height regardless of field order
 def _assign_enc_res(a, b, c):
     candidates = [a, b, c]
     enc = None
@@ -132,71 +131,46 @@ def _assign_enc_res(a, b, c):
         for x in candidates:
             if 0 <= int(x) <= 0xFF:
                 enc = x; break
-    if enc is None:
-        enc = a
+    if enc is None: enc = a
     rest = [x for x in candidates if x is not enc]
-    if len(rest) == 2:
-        w, h = rest[0], rest[1]
-    else:
-        w, h = 0, 0
+    if len(rest) == 2: w, h = rest[0], rest[1]
+    else: w, h = 0, 0
     return int(enc), int(w), int(h)
 
 # ===================== Serial→Version (with factory hint) =====================
-
 def _parse_serial(serial_txt: str):
-    """
-    Expect 12 digits like LNNNNNNYWWFF (no spaces).
-    Returns (year_digit, week, factory_code_int) or None.
-    """
     s = "".join(ch for ch in (serial_txt or "") if ch.isdigit())
-    if len(s) < 12:
-        return None
+    if len(s) < 12: return None
     try:
-        y  = int(s[7])
-        ww = int(s[8:10])
-        ff = int(s[10:12])  # 02,03,05,06 → 2,3,5,6
+        y  = int(s[7]); ww = int(s[8:10]); ff = int(s[10:12])
         return (y, ww, ff)
     except Exception:
         return None
 
 def _guess_ver_by_serial(serial_txt: str):
-    """
-    Community mapping by YWW 'decade group' + factory hint:
-      20/21→1.0, 23→1.0–1.1, 24/25→1.1, 30→1.2, 31/32→1.3, 33→1.4–1.5, 41→1.6, 43→1.6b
-      Factory hint: 3→1.0; 5→1.1+; 6→1.2+ (used only to narrow '1.0–1.1' a bit)
-    """
     p = _parse_serial(serial_txt)
     if not p: return None
     y, ww, ff = p
-    group = 10*y + (ww // 10)  # e.g., Y=2, WW=46 → 24 group
+    group = 10*y + (ww // 10)
     base = None
-    if group in (20, 21):
-        base = "v1.0"
+    if group in (20, 21): base = "v1.0"
     elif group == 23:
         base = "v1.0–1.1"
-        if ff == 3:
-            base = "v1.0"
-        elif ff in (5, 6):
-            base = "v1.1"
-    elif group in (24, 25):
-        base = "v1.1"
-    elif group == 30:
-        base = "v1.2"
-    elif group in (31, 32):
-        base = "v1.3"
-    elif group == 33:
-        base = "v1.4–1.5"
-    elif group == 41:
-        base = "v1.6"
-    elif group == 43:
-        base = "v1.6b"
+        if ff == 3: base = "v1.0"
+        elif ff in (5, 6): base = "v1.1"
+    elif group in (24, 25): base = "v1.1"
+    elif group == 30: base = "v1.2"
+    elif group in (31, 32): base = "v1.3"
+    elif group == 33: base = "v1.4–1.5"
+    elif group == 41: base = "v1.6"
+    elif group == 43: base = "v1.6b"
     return base
 
 def _range_from_encoder(enc_byte: int):
     v = int(enc_byte) & 0xFF
-    if v == 0x45: return "v1.0–1.3"  # Conexant
-    if v == 0x6A: return "v1.4–1.5"  # Focus
-    if v == 0x70: return "v1.6"      # Xcalibur
+    if v == 0x45: return "v1.0–1.3"
+    if v == 0x6A: return "v1.4–1.5"
+    if v == 0x70: return "v1.6"
     return None
 
 # ---- Mini graph widget (grid + current dot + value label) ---------------------
@@ -205,25 +179,21 @@ class MiniGraph(tk.Canvas):
         super().__init__(master, width=width, height=height, bg=bg,
                          highlightthickness=0, bd=0, **kw)
         self.w = width; self.h = height
-        self.fg = CLR_TEXT             # line + text color matches UI text
+        self.fg = CLR_TEXT
         self.pad = 8
 
     def draw(self, values, value_suffix=""):
         self.delete("all")
-        if not values:
-            return
+        if not values: return
 
-        # bounds
         vmin = min(values); vmax = max(values)
-        if vmin == vmax:
-            vmin -= 1; vmax += 1
+        if vmin == vmax: vmin -= 1; vmax += 1
         span = vmax - vmin
         vmin -= 0.05 * span; vmax += 0.05 * span
 
         inner_w = self.w - 2*self.pad
         inner_h = self.h - 2*self.pad
 
-        # border + grid
         self.create_rectangle(1, 1, self.w-2, self.h-2, outline=CLR_EDGE, width=2)
         for i in range(1, 5):
             x = self.pad + i * (inner_w / 5.0)
@@ -231,40 +201,36 @@ class MiniGraph(tk.Canvas):
             self.create_line(x, self.pad, x, self.h-self.pad, fill=CLR_EDGE)
             self.create_line(self.pad, y, self.w-self.pad, y, fill=CLR_EDGE)
 
-        # polyline
         n = len(values)
         if n == 1:
             x_last = self.pad
             y_last = self.pad + inner_h * (1 - (values[0]-vmin)/(vmax-vmin))
             self.create_oval(x_last-3, y_last-3, x_last+3, y_last+3, fill="yellow", outline="")
+            return
+
+        step = float(inner_w) / float(n-1)
+        pts = []
+        for i, v in enumerate(values):
+            x = self.pad + i*step
+            y = self.pad + inner_h * (1 - (float(v)-vmin)/(vmax-vmin))
+            pts.extend((x, y))
+        self.create_line(*pts, fill=self.fg, width=2, smooth=False)
+
+        x_last = self.pad + (n-1)*step
+        y_last = self.pad + inner_h * (1 - (values[-1]-vmin)/(vmax-vmin))
+        x_last = min(self.w - self.pad - 3, max(self.pad + 3, x_last))
+        y_last = min(self.h - self.pad - 3, max(self.pad + 3, y_last))
+        self.create_oval(x_last-3, y_last-3, x_last+3, y_last+3, fill="yellow", outline="")
+
+        label = f"{int(round(values[-1]))}{value_suffix}"
+        margin = 6
+        right_thresh = self.w - self.pad - 60
+        if x_last > right_thresh:
+            lx = x_last - margin; anchor = "e"
         else:
-            step = float(inner_w) / float(n-1)
-            pts = []
-            for i, v in enumerate(values):
-                x = self.pad + i*step
-                y = self.pad + inner_h * (1 - (float(v)-vmin)/(vmax-vmin))
-                pts.extend((x, y))
-            self.create_line(*pts, fill=self.fg, width=2, smooth=False)
-            x_last = self.pad + (n-1)*step
-            y_last = self.pad + inner_h * (1 - (values[-1]-vmin)/(vmax-vmin))
-
-            # clamp a bit so the dot never clips
-            x_last = min(self.w - self.pad - 3, max(self.pad + 3, x_last))
-            y_last = min(self.h - self.pad - 3, max(self.pad + 3, y_last))
-
-            # current point marker
-            self.create_oval(x_last-3, y_last-3, x_last+3, y_last+3, fill="yellow", outline="")
-
-            # value label (auto side so it stays readable)
-            label = f"{int(round(values[-1]))}{value_suffix}"
-            margin = 6
-            right_thresh = self.w - self.pad - 60  # near right edge?
-            if x_last > right_thresh:
-                lx = x_last - margin; anchor = "e"   # put label to the LEFT
-            else:
-                lx = x_last + margin; anchor = "w"   # put label to the RIGHT
-            ly = max(self.pad+10, min(self.h - self.pad - 10, y_last))
-            self.create_text(lx, ly, text=label, fill=self.fg, anchor=anchor, font=("Segoe UI", 9, "bold"))
+            lx = x_last + margin; anchor = "w"
+        ly = max(self.pad+10, min(self.h - self.pad - 10, y_last))
+        self.create_text(lx, ly, text=label, fill=self.fg, anchor=anchor, font=("Segoe UI", 9, "bold"))
 
 # ---- Seven-segment widget -----------------------------------------------------
 class SevenSeg(tk.Canvas):
@@ -348,6 +314,9 @@ class App(tk.Tk):
         self.title("Type-D PC Viewer")
         self.configure(bg=CLR_BG)
         self.resizable(False, False)
+        self._ee_raw_b64 = None
+
+        self._apply_icon()
 
         style = ttk.Style(self)
         style.theme_use("clam")
@@ -460,12 +429,27 @@ class App(tk.Tk):
         self.var_status = tk.StringVar(value=f"Listening on UDP :{PORT_MAIN} (main) / :{PORT_EXT} (ext) / :{PORT_EE} (eeprom)")
         ttk.Label(footer, textvariable=self.var_status, style="Small.TLabel").pack(side="right")
 
+        # --- Menus (NEW)
+        self._menu = tk.Menu(self); self.config(menu=self._menu)
+        m_file = tk.Menu(self._menu, tearoff=0)
+        m_file.add_command(label="Save PNG…", command=self.do_save_png)
+        m_file.add_separator()
+        m_file.add_command(label="Exit", command=self.on_close)
+        self._menu.add_cascade(label="File", menu=m_file)
+
+        self._menu_tools = tk.Menu(self._menu, tearoff=0)
+        self._log_menu_index = 0
+        self._menu_tools.add_command(label="Start Logging…", command=self.toggle_logging)
+        self._menu_tools.add_command(label="Copy EEPROM to Clipboard", command=self.do_copy_eeprom)
+        self._menu_tools.add_command(label="Copy EEPROM RAW (base64)", command=self.do_copy_eeraw)
+        self._menu.add_cascade(label="Tools", menu=self._menu_tools)
+
         # --- Min/Max state
         self.fan_min = None; self.fan_max = None
         self.cpu_min = None; self.cpu_max = None   # track in °C
         self.amb_min = None; self.amb_max = None   # track in °C
 
-        # --- History for graphs (keep ~1 minute of data by wall time)
+        # --- History for graphs (keep ~10 minutes by wall time)
         self.hist_window_sec = 600.0
         self.hist_fan  = []   # list[(t,val)]
         self.hist_cpuC = []
@@ -478,11 +462,27 @@ class App(tk.Tk):
         self._last_enc = None
         self._last_smc_code = None
 
+        # --- Logging state (NEW)
+        self._log_fp = None
+        self._log_csv = None
+        self._log_rows = 0
+
         # Threads
         self._stop = False
         self._t_main = threading.Thread(target=self._listen_main, daemon=True); self._t_main.start()
         self._t_ext  = threading.Thread(target=self._listen_ext,  daemon=True); self._t_ext.start()
         self._t_ee   = threading.Thread(target=self._listen_ee,   daemon=True); self._t_ee.start()
+
+    # ---- Icon/resource helper (NEW) ----
+    def _apply_icon(self):
+        try:
+            base = getattr(sys, "_MEIPASS", os.path.abspath("."))
+            ico_path = os.path.join(base, "dc.ico")
+            if os.path.exists(ico_path):
+                # Windows accepts .ico directly
+                self.iconbitmap(ico_path)
+        except Exception:
+            pass  # non-Windows or missing icon; ignore
 
     # ---- Unit helpers ----
     @staticmethod
@@ -546,8 +546,7 @@ class App(tk.Tk):
         return [v for (t, v) in hist if t >= cutoff]
 
     def _update_graphs(self):
-        # prepare values in display units (last ~60s)
-        fan_vals = self._recent_values(self.hist_fan)
+        fan_vals   = self._recent_values(self.hist_fan)
         cpu_vals_c = self._recent_values(self.hist_cpuC)
         amb_vals_c = self._recent_values(self.hist_ambC)
 
@@ -560,12 +559,10 @@ class App(tk.Tk):
             amb_vals = amb_vals_c
             unit = "°C"
 
-        # draw graphs (with suffixes)
         self.graph_fan.draw(fan_vals, value_suffix="%")
         self.graph_cpu.draw(cpu_vals, value_suffix=unit)
         self.graph_amb.draw(amb_vals, value_suffix=unit)
 
-        # stats labels: show cur/min/max
         if fan_vals:
             cur = int(fan_vals[-1]); mn = int(min(fan_vals)); mx = int(max(fan_vals))
             self.lbl_fan_minmax.configure(text=f"cur {cur}   min {mn}   max {mx}")
@@ -605,36 +602,40 @@ class App(tk.Tk):
         self.seg_amb.set(self._fmt3(amb_show))
         self.var_app.set(app if app else "—")
 
-        # append to time-based histories and trim to last ~60s
         now = time.time()
         self.hist_fan.append((now, fan));    self._trim_hist(self.hist_fan)
         self.hist_cpuC.append((now, cpu_c)); self._trim_hist(self.hist_cpuC)
         self.hist_ambC.append((now, amb_c)); self._trim_hist(self.hist_ambC)
 
+        # CSV logging (NEW)
+        if self._log_csv:
+            ts = time.strftime("%Y-%m-%dT%H:%M:%S")
+            try:
+                self._log_csv.writerow([ts, fan, cpu_c, amb_c, (app or "").strip()])
+                self._log_rows += 1
+                if self._log_rows % 10 == 0:  # flush every 10 rows
+                    self._log_fp.flush()
+            except Exception as e:
+                self.var_status.set(f"Log write failed: {e}")
+                self.stop_logging()
+
         if self.graph_mode.get():
             self._update_graphs()
 
     def _refresh_version_label(self):
-        """
-        Prefer serial-derived version; else encoder range; else SMC code.
-        """
-        # 1) serial-derived
         if self._ver_from_serial:
             label = f"{self._ver_from_serial} (serial)"
-            # sanity: if encoder contradicts (e.g., Xcalibur vs 1.4–1.5), trust encoder
             if self._last_enc is not None:
                 enc_range = _range_from_encoder(self._last_enc)
                 if enc_range == "v1.6" and not self._ver_from_serial.startswith("v1.6"):
                     label = f"{enc_range} (encoder)"
             self.var_xboxver.set(label); return
 
-        # 2) encoder-derived
         if self._last_enc is not None:
             enc_range = _range_from_encoder(self._last_enc)
             if enc_range:
                 self.var_xboxver.set(f"{enc_range} (encoder)"); return
 
-        # 3) SMC-reported (if any)
         if self._last_smc_code is not None:
             self.var_xboxver.set(f"{decode_xboxver(self._last_smc_code)} (SMC)"); return
 
@@ -671,8 +672,6 @@ class App(tk.Tk):
         self.var_ee_region.set((region_txt or "").strip() or "—")
         self._ee_hdd_full = (hdd_hex or "").strip()
         self._refresh_hdd()
-
-        # NEW: version from serial (if valid)
         self._ee_serial_txt = (serial_txt or "").strip()
         self._ver_from_serial = _guess_ver_by_serial(self._ee_serial_txt)
         self._refresh_version_label()
@@ -724,7 +723,6 @@ class App(tk.Tk):
             if not txt.startswith("EE:"):
                 continue
 
-            # small console note to see what's coming in
             try:
                 print("[EE RX]", txt[:120] + ("…" if len(txt) > 120 else ""))
             except Exception:
@@ -733,9 +731,6 @@ class App(tk.Tk):
             payload = txt[3:]
             serial_txt = mac_txt = region_txt = hdd_hex = None
 
-            # Labeled forms:
-            #   EE:SN=...|MAC=...|REG=...|HDD=...|RAW=...
-            #   EE:SER=...|MAC=...|REG=...|HDD=...
             if "=" in payload and ("|" in payload or payload.startswith(("SN=","SER="))):
                 fields = {}
                 for part in payload.split("|"):
@@ -746,9 +741,9 @@ class App(tk.Tk):
                 mac_txt    = fields.get("MAC") or ""
                 region_txt = fields.get("REG") or ""
                 hdd_hex    = fields.get("HDD") or ""
-
-                # If RAW included, use it to fill any blanks
                 b64 = fields.get("RAW")
+                if b64:
+                    self._ee_raw_b64 = b64
                 if b64 and (not (serial_txt and mac_txt and region_txt and hdd_hex)):
                     try:
                         raw = base64.b64decode(b64)
@@ -756,17 +751,15 @@ class App(tk.Tk):
                             serial_txt, mac_txt, region_txt, hdd_hex = self._ee_from_raw(raw)
                     except Exception:
                         pass
-
-            # RAW-only form: EE:RAW=<base64>
             elif payload.startswith("RAW="):
                 b64 = payload[4:]
+                self._ee_raw_b64 = b64
                 try:
                     raw = base64.b64decode(b64)
                     if len(raw) == 256:
                         serial_txt, mac_txt, region_txt, hdd_hex = self._ee_from_raw(raw)
                 except Exception:
                     pass
-
             elif payload.startswith("ERR="):
                 self.after(0, self.var_status.set, f"EEPROM error from {addr[0]}: {payload[4:]}")
                 continue
@@ -806,28 +799,105 @@ class App(tk.Tk):
             return score, serial_txt, mac_txt, region_txt, hdd_hex
 
         maps = [EE_OFFSETS] + EE_FALLBACKS
-        best = (-1, "", "", "", "")
-        best_i = -1
+        best = (-1, "", "", "", ""); best_i = -1
         for i, m in enumerate(maps):
             score, s, mac, reg, hdd = try_decode_with(m)
             if score > best[0]:
-                best = (score, s, mac, reg, hdd)
-                best_i = i
-            if score == 3:
-                break  # perfect match
+                best = (score, s, mac, reg, hdd); best_i = i
+            if score == 3: break
 
         _, serial_txt, mac_txt, region_txt, hdd_hex = best
-
-        # console debug: which map
         try:
             print(f"[EE] used map #{best_i} -> SN={serial_txt} MAC={mac_txt} REG={region_txt} HDD={hdd_hex[:8]}…")
         except Exception:
             pass
-
         return serial_txt, mac_txt, region_txt, hdd_hex
+
+    # ---- PNG capture (NEW) ----
+    def do_save_png(self):
+        if not PIL_AVAILABLE:
+            messagebox.showerror("Screenshot", "Pillow (PIL) not available. Install with: pip install pillow")
+            return
+        x = self.winfo_rootx(); y = self.winfo_rooty()
+        w = self.winfo_width(); h = self.winfo_height()
+        if w <= 1 or h <= 1:
+            self.update_idletasks()
+            w = self.winfo_width(); h = self.winfo_height()
+        path = filedialog.asksaveasfilename(
+            defaultextension=".png",
+            filetypes=[("PNG Image","*.png")],
+            initialfile=time.strftime("typed_viewer_%Y%m%d_%H%M%S.png"),
+            title="Save window as PNG"
+        )
+        if not path: return
+        try:
+            img = ImageGrab.grab(bbox=(x, y, x+w, y+h))
+            img.save(path, "PNG")
+            self.var_status.set(f"Saved PNG to {os.path.basename(path)}")
+        except Exception as e:
+            messagebox.showerror("Screenshot failed", str(e))
+
+    # ---- EEPROM copy (NEW) ----
+    def do_copy_eeprom(self):
+        serial_txt = (self.var_ee_serial.get() or "—")
+        mac_txt    = (self.var_ee_mac.get() or "—")
+        region_txt = (self.var_ee_region.get() or "—")
+        hdd_txt    = (self._ee_hdd_full or "—")
+        text = f"SN={serial_txt}  MAC={mac_txt}  REG={region_txt}  HDD={hdd_txt}"
+        try:
+            self.clipboard_clear(); self.clipboard_append(text); self.update()
+            self.var_status.set("EEPROM copied to clipboard")
+        except Exception as e:
+            messagebox.showerror("Clipboard", f"Copy failed: {e}")
+
+    def do_copy_eeraw(self):
+        if not self._ee_raw_b64:
+            messagebox.showinfo("EEPROM RAW", "No RAW (base64) block received yet.")
+            return
+        try:
+            self.clipboard_clear(); self.clipboard_append(self._ee_raw_b64); self.update()
+            self.var_status.set("EEPROM RAW (base64) copied")
+        except Exception as e:
+            messagebox.showerror("Clipboard", f"Copy failed: {e}")
+
+    # ---- Logging (NEW) ----
+    def toggle_logging(self):
+        if self._log_csv:
+            self.stop_logging()
+        else:
+            self.start_logging()
+
+    def start_logging(self):
+        path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV","*.csv")],
+            initialfile=time.strftime("typed_viewer_log_%Y%m%d_%H%M%S.csv"),
+            title="Start CSV logging"
+        )
+        if not path: return
+        try:
+            self._log_fp = open(path, "w", newline="", encoding="utf-8")
+            self._log_csv = csv.writer(self._log_fp)
+            self._log_csv.writerow(["timestamp_iso","fan_pct","cpu_c","amb_c","app"])
+            self._log_rows = 0
+            self._menu_tools.entryconfigure(self._log_menu_index, label="Stop Logging")
+            self.var_status.set(f"Logging → {os.path.basename(path)}")
+        except Exception as e:
+            self._log_fp = None; self._log_csv = None
+            messagebox.showerror("Logging", f"Could not start logging: {e}")
+
+    def stop_logging(self):
+        try:
+            if self._log_fp:
+                self._log_fp.flush(); self._log_fp.close()
+        finally:
+            self._log_fp = None; self._log_csv = None; self._log_rows = 0
+            self._menu_tools.entryconfigure(self._log_menu_index, label="Start Logging…")
+            self.var_status.set("Logging stopped")
 
     def on_close(self):
         self._stop = True
+        self.stop_logging()
         self.destroy()
 
 if __name__ == "__main__":
