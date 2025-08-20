@@ -4,7 +4,7 @@ Firmware for the Waveshare ESP32-S3-Zero, featuring UDP-based status reporting.
 
 ## Required Hardware
 
-Waveshare ESP32-S3 Zero
+Waveshare ESP32-S3 Zero (clones will work, but LED RGB value may need adjustment)
 
 <a href="https://www.amazon.com/dp/B0CS6VS1DJ?ref_=ppx_hzsearch_conn_dt_b_fed_asin_title_2">Amazon</a>
 
