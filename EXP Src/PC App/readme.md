@@ -18,10 +18,12 @@ The original python script will be in the script folder in this directory
 
 * Xbox version detection: prefers EEPROM serial mapping; falls back to encoder family; finally uses SMC code if available.
 
-* EEPROM panel: shows Serial, MAC, Region, and HDD key (masked with “Reveal” toggle); resilient parsing from raw 256-byte dump with fallback layouts.
+* EEPROM panel: shows Serial, MAC, Region, and HDD key* (masked with “Reveal” toggle); resilient parsing from raw 256-byte dump with fallback layouts.
 
 * Time-windowed history: charts keep a fixed wall-time window (configurable; default ~10 minutes), independent of packet rate.
 
 * Compatibility: accepts multiple EEPROM message formats and any field order for encoder/width/height; tolerates missing or partial data.
 
 * Theming & polish: consistent Xbox-green palette, beveled 7-segment displays, compact single-window layout.
+  
+*HDD feature is still being worked on and may not produce an actual key  
