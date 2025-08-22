@@ -1,4 +1,3 @@
-# typed_viewer_xbox_theme_plus_ext.py
 # Type-D PC Viewer — OG Xbox-themed UDP monitor
 # - Main telemetry :50504 (XboxStatus: <iii32s>)
 # - Extended SMBus :50505 (tray/avpack/pic/xboxVer/enc/w/h: <iiiiiii>)
@@ -22,7 +21,7 @@ from tkinter import ttk, filedialog, messagebox, colorchooser
 
 # ---------------- App metadata (editable) ----------------
 APP_NAME = "Type-D PC Viewer"
-APP_VERSION = "v4.0.2"  # background RGBA veil + full transparency
+APP_VERSION = "v4.1.0"  # opacity control + cleanup
 
 # Optional Pillow for screen capture and images
 try:
@@ -310,7 +309,7 @@ class SevenSeg(tk.Canvas):
         self.seg_w = seg_width
         self.seg_l = seg_len
         self.digit_h = seg_len*2 + seg_width + pad*4
-        
+
         width, height = self.digit_w * digits - gap, self.digit_h
         bg = bg if bg is not None else theme["panel"]
         super().__init__(master, width=width, height=height, bg=bg,
@@ -435,7 +434,7 @@ class App(tk.Tk):
         self._bg_path  = None          # path of original
         self._bg_pil_base = None       # resized base image (PIL, no veil)
         self._bg_pil = None            # composited (with veil) used for canvas crops
-        self._bg_opacity = 0.60        # 60% veil (0..1)
+        self._bg_opacity = 0.60        # 0..1 veil opacity
 
         # Transparency toggle & saved panel color
         self.transparent_panels = tk.BooleanVar(value=False)
@@ -491,32 +490,40 @@ class App(tk.Tk):
         # --- Fan
         ttk.Label(fan_panel, text="FAN (%)", style="Panel.TLabel").grid(row=0, column=0, sticky="w")
         self.seg_fan = SevenSeg(fan_panel, digits=3, theme=self.theme); self.seg_fan.grid(row=1, column=0, pady=(6,0))
-        self.graph_fan = MiniGraph(fan_panel, theme=self.theme); self.graph_fan.grid(row=1, column=0, pady=(6,0)); self.graph_fan.grid_remove()
+        # same size as seven-segment
+        w_fan = int(self.seg_fan.cget("width")); h_fan = int(self.seg_fan.cget("height"))
+        self.graph_fan = MiniGraph(fan_panel, width=w_fan, height=h_fan, theme=self.theme)
+        self.graph_fan.grid(row=1, column=0, pady=(6,0)); self.graph_fan.grid_remove()
+
         self.lbl_fan_minmax = ttk.Label(fan_panel, text="min —   max —", style="Panel.TLabel"); self.lbl_fan_minmax.grid(row=2, column=0, sticky="e")
 
         # --- CPU
         ttk.Label(cpu_panel, text="CPU TEMP", style="Panel.TLabel").grid(row=0, column=0, sticky="w")
         self.seg_cpu = SevenSeg(cpu_panel, digits=3, theme=self.theme); self.seg_cpu.grid(row=1, column=0, pady=(6,0))
-        self.graph_cpu = MiniGraph(cpu_panel, theme=self.theme); self.graph_cpu.grid(row=1, column=0, pady=(6,0)); self.graph_cpu.grid_remove()
+        w_cpu = int(self.seg_cpu.cget("width")); h_cpu = int(self.seg_cpu.cget("height"))
+        self.graph_cpu = MiniGraph(cpu_panel, width=w_cpu, height=h_cpu, theme=self.theme)
+        self.graph_cpu.grid(row=1, column=0, pady=(6,0)); self.graph_cpu.grid_remove()
+
         self.var_unit = tk.StringVar(value="°C")
         self.lbl_cpu_minmax = ttk.Label(cpu_panel, text="min —   max —   °C", style="Panel.TLabel"); self.lbl_cpu_minmax.grid(row=2, column=0, sticky="e")
 
         # --- Ambient
         ttk.Label(amb_panel, text="AMBIENT", style="Panel.TLabel").grid(row=0, column=0, sticky="w")
         self.seg_amb = SevenSeg(amb_panel, digits=3, theme=self.theme); self.seg_amb.grid(row=1, column=0, pady=(6,0))
-        self.graph_amb = MiniGraph(amb_panel, theme=self.theme); self.graph_amb.grid(row=1, column=0, pady=(6,0)); self.graph_amb.grid_remove()
+        w_amb = int(self.seg_amb.cget("width")); h_amb = int(self.seg_amb.cget("height"))
+        self.graph_amb = MiniGraph(amb_panel, width=w_amb, height=h_amb, theme=self.theme)
+        self.graph_amb.grid(row=1, column=0, pady=(6,0)); self.graph_amb.grid_remove()
+
         self.lbl_amb_minmax = ttk.Label(amb_panel, text="min —   max —   °C", style="Panel.TLabel"); self.lbl_amb_minmax.grid(row=2, column=0, sticky="e")
 
         # ---- Background canvases for panels that must look transparent ----
         def _make_panel_bg(parent, fallback_key):
             c = tk.Canvas(parent, highlightthickness=0, bd=0, bg=self.theme["panel" if fallback_key=="panel" else "bg"])
             c.place(relx=0, rely=0, relwidth=1, relheight=1)
-            # Lower the *widget* (not a canvas item). Canvas.lower is tag_lower in Py3.13, so call Tcl directly.
             try:
                 c.tk.call('lower', c._w)
             except Exception:
                 pass
-            # Give it the API our slicer expects
             def set_background_image(photoimage):
                 c._bg_photo = photoimage
                 if photoimage is None:
@@ -620,8 +627,8 @@ class App(tk.Tk):
         footer = ttk.Frame(container, style="TFrame")
         self._footer = footer
         footer.grid(row=5, column=0, columnspan=3, sticky="ew", pady=(10,0))
-        self._panel_frames.append(footer)   # make footer transparent when needed
-        self._panel_frames.append(container)  # also make container itself transparent
+        self._panel_frames.append(footer)
+        self._panel_frames.append(container)
 
         # Footer background canvas (fallback 'bg', not 'panel')
         self._bg_footer = _make_panel_bg(footer, "bg")
@@ -664,7 +671,6 @@ class App(tk.Tk):
         # Redraw helper so the text is right-aligned and colored per theme
         def _redraw_status(*_):
             c = self._status_canvas
-            # keep bg image (if present) and redraw only the text
             c.delete("status_text")
             w = max(1, c.winfo_width()); h = max(1, c.winfo_height())
             c.create_text(w-6, h//2, text=self.var_status.get(), anchor="e",
@@ -673,9 +679,8 @@ class App(tk.Tk):
 
         self._status_canvas.bind("<Configure>", _redraw_status)
         self.var_status.trace_add("write", _redraw_status)
-        self._status_redraw = _redraw_status  # keep a reference for theme updates
+        self._status_redraw = _redraw_status
         self.after(50, _redraw_status)
-
 
         # --- Menus (File / Tools / Appearance) --------------------------------
         self._menu = tk.Menu(self); self.config(menu=self._menu)
@@ -695,7 +700,7 @@ class App(tk.Tk):
         self._menu_tools.add_command(label="Copy EEPROM RAW (base64)", command=self.do_copy_eeraw)
         self._menu.add_cascade(label="Tools", menu=self._menu_tools)
 
-        # Appearance menu (Simplified + persistence)
+        # Appearance menu (with opacity control)
         self._menu_appearance = tk.Menu(self._menu, tearoff=0)
         self._menu_appearance.add_command(label="Load Background Image…", command=self.appearance_load_bg)
         self._menu_appearance.add_command(label="Clear Background", command=self.appearance_clear_bg)
@@ -703,6 +708,8 @@ class App(tk.Tk):
                                               onvalue=True, offvalue=False,
                                               variable=self.transparent_panels,
                                               command=self.appearance_apply_transparency)
+        self._menu_appearance.add_command(label="Adjust Background Opacity…",
+                                          command=self.appearance_adjust_opacity)
         self._menu_appearance.add_separator()
         self._menu_appearance.add_command(label="Pick Accent Color…", command=self.appearance_pick_accent)
         self._menu_appearance.add_command(label="Pick Panel Color…", command=self.appearance_pick_panel)
@@ -730,6 +737,11 @@ class App(tk.Tk):
 
         # --- EEPROM cache + version inference state
         self._ee_hdd_full = None
+               # sockets for clean shutdown
+        self._sock_main = None
+        self._sock_ext  = None
+        self._sock_ee   = None
+
         self._ee_serial_txt = None
         self._ver_from_serial = None
         self._last_enc = None
@@ -772,7 +784,6 @@ class App(tk.Tk):
         style.configure("Title.TLabel", background=self.theme["bg"], foreground=self.theme["accent"], font=("Segoe UI", 13, "bold"))
         style.configure("Small.TLabel", background=self.theme["bg"], foreground=self.theme["text"])
         style.configure("TCheckbutton", background=self.theme["bg"], foreground=self.theme["text"])
-        # A frame style that draws nothing (used to simulate transparency)
         try:
             style.layout("Transparent.TFrame", [])
         except tk.TclError:
@@ -782,14 +793,12 @@ class App(tk.Tk):
     def _rebuild_bg_composite(self):
         """Rebuild the composited background (base + optional veil), update label and slices."""
         if not PIL_AVAILABLE or Image is None or ImageTk is None or self._bg_pil_base is None:
-            # nothing to do
             self._bg_pil = None
             if self._bg_label:
                 self._bg_label.configure(image="")
             return
         img = self._bg_pil_base.convert("RGBA")
         if self.transparent_panels.get():
-            # Apply semi-transparent veil using the current window bg color
             r, g, b = _hex_to_rgb(self.theme["bg"])
             a = max(0, min(255, int(round(self._bg_opacity * 255))))
             veil = Image.new("RGBA", img.size, (r, g, b, a))
@@ -803,16 +812,14 @@ class App(tk.Tk):
         else:
             self._bg_label.configure(image=self._bg_image)
             self._bg_label.lower()
-        # After changing base/tint, refresh the per-canvas slices
+        self.update_idletasks()
         self._refresh_all_canvas_bg()
 
     # ---- Transparency application hooks ----
     def _apply_canvas_transparency(self):
-        # just (re)compute background slices
         self._refresh_all_canvas_bg()
 
     def _apply_panel_transparency(self):
-        """Switch panel/container/footer frames between normal and 'transparent' styles."""
         style = ttk.Style(self)
         try:
             style.layout("Transparent.TFrame", [])
@@ -827,9 +834,7 @@ class App(tk.Tk):
         else:
             for f in getattr(self, "_panel_frames", []):
                 try:
-                    # reset to original styles:
                     if f is self._container or isinstance(f, ttk.Frame) and f.winfo_manager():
-                        # container/footer were "TFrame"
                         if f is self._container or f.grid_info().get("row") == 5:
                             f.configure(style="TFrame")
                         else:
@@ -851,7 +856,6 @@ class App(tk.Tk):
 
     # ---- Appearance actions ----
     def _load_bg_from_path(self, path):
-        """Internal loader used by both menu action and theme loader."""
         if not path:
             return False
         try:
@@ -862,14 +866,12 @@ class App(tk.Tk):
             if PIL_AVAILABLE and Image is not None and ImageTk is not None:
                 img = Image.open(path)
                 img = img.resize((w, h), Image.LANCZOS)
-                self._bg_pil_base = img.convert("RGBA")      # keep base for recompositing
+                self._bg_pil_base = img.convert("RGBA")
             else:
                 self._bg_pil_base = None
             self._bg_path = path
             self.var_status.set(f"Background set: {os.path.basename(path)}")
-            # Build composited bg (will also update per-canvas slices)
             self._rebuild_bg_composite()
-            # If transparent mode on, apply frame swap
             self._apply_panel_transparency()
             return True
         except Exception as e:
@@ -892,13 +894,53 @@ class App(tk.Tk):
         self._bg_pil_base = None
         self._bg_path = None
         self.var_status.set("Background cleared")
-        # revert panel if we had forced transparency
         self._apply_panel_transparency()
         self._refresh_all_canvas_bg()
 
     def appearance_apply_transparency(self):
         self._apply_panel_transparency()
         self._rebuild_bg_composite()
+
+    def appearance_adjust_opacity(self):
+        """Small dialog with a slider to adjust the background veil opacity (0..100%)."""
+        top = tk.Toplevel(self)
+        top.title("Adjust Background Opacity")
+        top.transient(self)
+        top.resizable(False, False)
+
+        frm = ttk.Frame(top, padding=12)
+        frm.grid(row=0, column=0, sticky="nsew")
+
+        ttk.Label(frm, text="Background tint opacity (affects Transparent Panels with a loaded background):",
+                  style="Small.TLabel").grid(row=0, column=0, columnspan=2, sticky="w")
+
+        val = tk.DoubleVar(value=float(getattr(self, "_bg_opacity", 0.60)) * 100.0)
+
+        def _apply_from_var(*_):
+            try:
+                pct = max(0.0, min(100.0, float(val.get())))
+            except Exception:
+                pct = 60.0
+            self._bg_opacity = round(pct / 100.0, 3)
+            self._rebuild_bg_composite()
+            try:
+                self.var_status.set(f"Background opacity: {int(round(pct))}%")
+            except Exception:
+                pass
+
+        s = tk.Scale(frm, from_=0, to=100, orient="horizontal",
+                     resolution=1, showvalue=True, variable=val,
+                     command=lambda _=None: _apply_from_var())
+        s.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 4))
+
+        ttk.Button(frm, text="Close", command=top.destroy).grid(row=2, column=1, sticky="e", pady=(8, 0))
+
+        hint = "Tip: load a background and enable \"Use Transparent Panels…\" to see the effect."
+        ttk.Label(frm, text=hint, style="Small.TLabel").grid(row=3, column=0, columnspan=2, sticky="w", pady=(8, 0))
+
+        frm.columnconfigure(0, weight=1); frm.columnconfigure(1, weight=0)
+        top.grab_set()
+        _apply_from_var()
 
     def appearance_pick_accent(self):
         hexv = colorchooser.askcolor(color=self.theme["accent"], title="Pick Accent Color", parent=self)[1]
@@ -916,7 +958,6 @@ class App(tk.Tk):
             return
         self._panel_saved = hexv
         if self.transparent_panels.get() and self._bg_path:
-            # just store it; apply when transparency off
             self.var_status.set("Panel color stored (transparency ON)")
         else:
             new_theme = dict(self.theme)
@@ -931,7 +972,6 @@ class App(tk.Tk):
             return
         new_theme = dict(self.theme)
         new_theme["bg"] = hexv
-        # If transparency ON, panel should track bg
         if self.transparent_panels.get() and self._bg_path:
             new_theme["panel"] = hexv
             new_theme["seg_off"] = _auto_seg_off(hexv)
@@ -947,8 +987,6 @@ class App(tk.Tk):
 
     # ---- Theme (apply/save/load) ----
     def apply_theme(self, theme):
-        """Apply colors to styles and widgets without changing layout."""
-        # Ensure required derived fields exist
         theme = dict(theme)
         if "seg_off" not in theme:
             theme["seg_off"] = _auto_seg_off(theme.get("panel", DEFAULT_THEME["panel"]))
@@ -957,14 +995,12 @@ class App(tk.Tk):
         style = ttk.Style(self)
         self._apply_styles(style)
 
-        # Update top edge lines
         for line in getattr(self, "_edge_lines", []):
             try:
                 line.configure(bg=self.theme["edge"])
             except Exception:
                 pass
 
-        # Update custom widgets
         for seg in (getattr(self, "seg_fan", None), getattr(self, "seg_cpu", None), getattr(self, "seg_amb", None)):
             if seg:
                 seg.set_colors({
@@ -979,26 +1015,15 @@ class App(tk.Tk):
         for g in (getattr(self, "graph_fan", None), getattr(self, "graph_cpu", None), getattr(self, "graph_amb", None)):
             if g:
                 g.set_colors(self.theme)
-        # Apply (or remove) panel transparency after style updates
+
         self._apply_panel_transparency()
-        # Rebuild background composite (veil color may have changed)
-        self._rebuild_bg_composite()
-        # Force redraw of labels after style change
-        self.update_idletasks()
-        
-        # Rebuild background composite (veil color may have changed)
         self._rebuild_bg_composite()
 
-        # Update status text color on the overlay canvas
         try:
             if hasattr(self, "_status_redraw"):
                 self._status_redraw()
         except Exception:
             pass
-
-        # Force redraw of labels after style change
-        self.update_idletasks()
-
 
     def _theme_to_ini(self):
         cfg = configparser.ConfigParser()
@@ -1024,33 +1049,28 @@ class App(tk.Tk):
         if not cfg.has_section("theme"):
             return False
         t = cfg["theme"]
-        # Load basic colors
         new_theme = dict(self.theme)
         for k in ["bg", "panel", "edge", "text", "accent", "seg_on", "seg_off",
                   "border_on", "border_off", "bevel_hi", "bevel_sh"]:
             if k in t:
                 new_theme[k] = t.get(k, new_theme.get(k))
         self._panel_saved = new_theme["panel"]
-        # Apply theme first
         self.apply_theme(new_theme)
 
-        # Background (if any)
         bgp = t.get("background_path", "").strip()
         if bgp and os.path.exists(bgp):
             self._load_bg_from_path(bgp)
         else:
-            self.appearance_clear_bg()
+            if "background_path" in t:
+                self.appearance_clear_bg()
 
-        # Transparency toggle
         self.transparent_panels.set(t.get("transparent_panels", "0") in ("1", "true", "yes", "on"))
 
-        # Background opacity (veil)
         try:
             self._bg_opacity = max(0.0, min(1.0, float(t.get("bg_opacity", "0.60"))))
         except Exception:
             self._bg_opacity = 0.60
 
-        # Apply now that settings loaded
         self.appearance_apply_transparency()
         return True
 
@@ -1163,7 +1183,6 @@ class App(tk.Tk):
             self.graph_cpu.grid_remove(); self.seg_cpu.grid()
             self.graph_amb.grid_remove(); self.seg_amb.grid()
             self._refresh_units()
-        # positions changed -> refresh bg slices
         self._refresh_all_canvas_bg()
 
     # ---- Graph helpers ----
@@ -1204,6 +1223,18 @@ class App(tk.Tk):
             cur = int(amb_vals[-1]); mn = int(min(amb_vals)); mx = int(max(amb_vals))
             self.lbl_amb_minmax.configure(text=f"cur {cur}   min {mn}   max {mx}   {unit}")
 
+    # -------------------- Socket helper --------------------
+    def _make_sock(self, port):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        except OSError:
+            pass
+        s.bind(("", port))
+        s.settimeout(0.5)  # allows timely shutdown via self._stop
+        return s
+
     # ---- Renderers ----
     def _render_main(self, fan, cpu_c, amb_c, app):
         fan   = max(0, min(100, int(fan)))
@@ -1238,7 +1269,6 @@ class App(tk.Tk):
         self.hist_cpuC.append((now, cpu_c)); self._trim_hist(self.hist_cpuC)
         self.hist_ambC.append((now, amb_c)); self._trim_hist(self.hist_ambC)
 
-        # CSV logging
         if self._log_csv:
             ts = time.strftime("%Y-%m-%dT%H:%M:%S")
             try:
@@ -1309,117 +1339,118 @@ class App(tk.Tk):
 
     # ---- UDP listeners ----
     def _listen_main(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        try: s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        except OSError: pass
-        s.bind(("", PORT_MAIN))
-        while not self._stop:
-            try: data, addr = s.recvfrom(4096)
-            except OSError: break
-            if len(data) != SIZE_MAIN:
-                self.after(0, self.var_status.set, f"Main: got {len(data)} bytes from {addr[0]} (expected {SIZE_MAIN})")
-                continue
-            fan, cpu_c, amb_c, app_raw = struct.unpack(FMT_MAIN, data)
-            app = app_raw.split(b"\x00", 1)[0].decode("utf-8", errors="ignore")
-            self.after(0, self._render_main, fan, cpu_c, amb_c, app)
-            self.after(0, self.var_status.set, f"OK from {addr[0]} — main/ext/ee active")
+        s = self._make_sock(PORT_MAIN); self._sock_main = s
+        try:
+            while not self._stop:
+                try:
+                    data, addr = s.recvfrom(4096)
+                except socket.timeout:
+                    continue
+                except OSError:
+                    break
+                if len(data) != SIZE_MAIN:
+                    self.after(0, self.var_status.set, f"Main: got {len(data)} bytes from {addr[0]} (expected {SIZE_MAIN})")
+                    continue
+                fan, cpu_c, amb_c, app_raw = struct.unpack(FMT_MAIN, data)
+                app = app_raw.split(b"\x00", 1)[0].decode("utf-8", errors="ignore")
+                self.after(0, self._render_main, fan, cpu_c, amb_c, app)
+                self.after(0, self.var_status.set, f"OK from {addr[0]} — main/ext/ee active")
+        finally:
+            try: s.close()
+            except Exception: pass
 
     def _listen_ext(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        try: s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        except OSError: pass
-        s.bind(("", PORT_EXT))
-        while not self._stop:
-            try: data, addr = s.recvfrom(4096)
-            except OSError: break
-            if len(data) != SIZE_EXT:
-                self.after(0, self.var_status.set, f"Ext: got {len(data)} bytes from {addr[0]} (expected {SIZE_EXT})")
-                continue
-            t, a, p, xb, x5, x6, x7 = struct.unpack(FMT_EXT, data)
-            enc, vw, vh = _assign_enc_res(x5, x6, x7)
-            self.after(0, self._render_ext, t, a, p, xb, enc, vw, vh)
+        s = self._make_sock(PORT_EXT); self._sock_ext = s
+        try:
+            while not self._stop:
+                try:
+                    data, addr = s.recvfrom(4096)
+                except socket.timeout:
+                    continue
+                except OSError:
+                    break
+                if len(data) != SIZE_EXT:
+                    self.after(0, self.var_status.set, f"Ext: got {len(data)} bytes from {addr[0]} (expected {SIZE_EXT})")
+                    continue
+                t, a, p, xb, x5, x6, x7 = struct.unpack(FMT_EXT, data)
+                enc, vw, vh = _assign_enc_res(x5, x6, x7)
+                self.after(0, self._render_ext, t, a, p, xb, enc, vw, vh)
+        finally:
+            try: s.close()
+            except Exception: pass
 
     def _listen_ee(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        try: s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        except OSError: pass
-        s.bind(("", PORT_EE))
-        while not self._stop:
-            try: data, addr = s.recvfrom(65535)
-            except OSError: break
-            txt = data.decode("ascii", "ignore").strip()
-            if not txt.startswith("EE:"):
-                continue
-
-            try:
-                print("[EE RX]", txt[:120] + ("…" if len(txt) > 120 else ""))
-            except Exception:
-                pass
-
-            payload = txt[3:]
-            serial_txt = mac_txt = region_txt = hdd_hex = None
-
-            if "=" in payload and ("|" in payload or payload.startswith(("SN=","SER="))):
-                fields = {}
-                for part in payload.split("|"):
-                    if "=" in part:
-                        k, v = part.split("=", 1)
-                        fields[k.strip().upper()] = v.strip()
-                serial_txt = fields.get("SN") or fields.get("SER") or ""
-                mac_txt    = fields.get("MAC") or ""
-                region_txt = fields.get("REG") or ""
-                hdd_hex    = fields.get("HDD") or ""
-
-            elif payload.startswith("RAW="):
-                b64 = payload[4:]
-                self._ee_raw_b64 = b64
+        s = self._make_sock(PORT_EE); self._sock_ee = s
+        try:
+            while not self._stop:
                 try:
-                    raw = base64.b64decode(b64)
-                    if len(raw) == 256:
-                        serial_txt, mac_txt, region_txt, hdd_hex = self._ee_from_raw(raw)
+                    data, addr = s.recvfrom(65535)
+                except socket.timeout:
+                    continue
+                except OSError:
+                    break
+                txt = data.decode("ascii", "ignore").strip()
+                if not txt.startswith("EE:"):
+                    continue
+                try:
+                    print("[EE RX]", txt[:120] + ("…" if len(txt) > 120 else ""))
                 except Exception:
                     pass
-            elif payload.startswith("ERR="):
-                self.after(0, self.var_status.set, f"EEPROM error from {addr[0]}: {payload[4:]}")
-                continue
-
-            if any([serial_txt, mac_txt, region_txt, hdd_hex]):
-                self.after(0, self._render_ee, serial_txt, mac_txt, region_txt, hdd_hex)
-                self.after(0, self.var_status.set, f"EEPROM from {addr[0]}")
+                payload = txt[3:]
+                serial_txt = mac_txt = region_txt = hdd_hex = None
+                if "=" in payload and ("|" in payload or payload.startswith(("SN=","SER="))):
+                    fields = {}
+                    for part in payload.split("|"):
+                        if "=" in part:
+                            k, v = part.split("=", 1)
+                            fields[k.strip().upper()] = v.strip()
+                    serial_txt = fields.get("SN") or fields.get("SER") or ""
+                    mac_txt    = fields.get("MAC") or ""
+                    region_txt = fields.get("REG") or ""
+                    hdd_hex    = fields.get("HDD") or ""
+                elif payload.startswith("RAW="):
+                    b64 = payload[4:]
+                    self._ee_raw_b64 = b64
+                    try:
+                        raw = base64.b64decode(b64)
+                        if len(raw) == 256:
+                            serial_txt, mac_txt, region_txt, hdd_hex = self._ee_from_raw(raw)
+                    except Exception:
+                        pass
+                elif payload.startswith("ERR="):
+                    self.after(0, self.var_status.set, f"EEPROM error from {addr[0]}: {payload[4:]}")
+                    continue
+                if any([serial_txt, mac_txt, region_txt, hdd_hex]):
+                    self.after(0, self._render_ee, serial_txt, mac_txt, region_txt, hdd_hex)
+                    self.after(0, self.var_status.set, f"EEPROM from {addr[0]}")
+        finally:
+            try: s.close()
+            except Exception: pass
 
     # ---- EEPROM raw parsing ----
     def _ee_from_raw(self, buf):
         def digits_only(s):
             return "".join(ch for ch in s if ch.isdigit())
-
         def fmt_mac(raw6):
             return ":".join("{:02X}".format(b) for b in raw6)
-
         def try_decode_with(offsets):
             def take(name):
                 off, ln = offsets[name]
                 return buf[off:off+ln]
-
             hdd  = take("HDD_KEY")
             mac  = take("MAC")
             regb = take("REGION")[0]
             serb = take("SERIAL")
-
             serial_txt = digits_only(serb.decode("ascii", "ignore")).strip()
             mac_txt    = fmt_mac(mac)
             region_txt = EE_REGION_MAP.get(regb, f"UNKNOWN({regb:02X})")
             hdd_hex    = binascii.hexlify(hdd).decode().upper()
-
             ok_serial = len(serial_txt) in (11, 12)
             mac_all_same = all(b == mac[0] for b in mac)
             ok_mac = (len(mac) == 6) and not mac_all_same
             ok_hdd = any(b != 0x00 for b in hdd) and any(b != 0xFF for b in hdd)
             score = (1 if ok_serial else 0) + (1 if ok_mac else 0) + (1 if ok_hdd else 0)
             return score, serial_txt, mac_txt, region_txt, hdd_hex
-
         maps = [EE_OFFSETS] + EE_FALLBACKS
         best = (-1, "", "", "", ""); best_i = -1
         for i, m in enumerate(maps):
@@ -1427,7 +1458,6 @@ class App(tk.Tk):
             if score > best[0]:
                 best = (score, s, mac, reg, hdd); best_i = i
             if score == 3: break
-
         _, serial_txt, mac_txt, region_txt, hdd_hex = best
         try:
             print(f"[EE] used map #{best_i} -> SN={serial_txt} MAC={mac_txt} REG={region_txt} HDD={hdd_hex[:8]}…")
@@ -1534,11 +1564,9 @@ class App(tk.Tk):
             if not use_trans:
                 if hasattr(c, "set_background_image"):
                     c.set_background_image(None)
-                # choose correct fallback color for this canvas
                 key = self._canvas_fallback.get(c, "panel")
                 c.configure(bg=self.theme.get(key, self.theme["panel"]))
                 return
-            # compute widget rect within container (same size as bg PIL)
             self.update_idletasks()
             cx0 = self._container.winfo_rootx()
             cy0 = self._container.winfo_rooty()
@@ -1555,17 +1583,15 @@ class App(tk.Tk):
                 c.configure(bg=self.theme.get(key, self.theme["panel"]))
                 return
             if ImageTk is None:
-                # Fallback: no per-canvas image possible
                 c.configure(bg="")
                 return
             crop = self._bg_pil.crop((x0, y0, x1, y1))
             photo = ImageTk.PhotoImage(crop)
             c.set_background_image(photo)
-            # keep refs so Tk doesn't GC
             if not hasattr(self, "_bg_slice_refs"):
                 self._bg_slice_refs = {}
             self._bg_slice_refs[c] = photo
-            c.configure(bg="")  # irrelevant; image covers
+            c.configure(bg="")
         except Exception:
             pass
 
@@ -1575,6 +1601,11 @@ class App(tk.Tk):
 
     def on_close(self):
         self._stop = True
+        for s in (self._sock_main, self._sock_ext, self._sock_ee):
+            try:
+                if s: s.close()
+            except Exception:
+                pass
         self.stop_logging()
         self.destroy()
 
