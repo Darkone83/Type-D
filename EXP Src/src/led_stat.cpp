@@ -14,7 +14,7 @@ extern "C" void neopixelWrite(uint8_t pin, uint8_t r, uint8_t g, uint8_t b);
 
 // Set color using onboard RGB
 static void setLedColor(uint8_t r, uint8_t g, uint8_t b) {
-    neopixelWrite(RGB_PIN, g, r, b); // for some clone boards g, r, b may need to be swapped to r, g ,b
+    neopixelWrite(RGB_PIN, r, g, b); // for some clone boards g, r, b may beed to be swapped to r, g ,b
 }
 
 void LedStat::begin() {

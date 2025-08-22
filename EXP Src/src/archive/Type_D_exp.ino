@@ -6,12 +6,14 @@
 #include "udp_stat.h"
 #include "led_stat.h"
 #include "smbus_ext.h"
+#include "eeprom_min.h"
 #include <Wire.h>
 
 #define I2C_SDA_PIN 7   // Set to your working SMBus SDA pin
 #define I2C_SCL_PIN 6   // Set to your working SMBus SCL pin
 
 XboxSMBusStatus smbusStatus;
+static bool eeSent = false;
 
 void setup() {
     LedStat::begin();
@@ -36,6 +38,7 @@ void loop() {
     LedStat::loop();
     WiFiMgr::loop();
     
+
     Cache_Manager::pollTitleUdp();
 
     // 1. SMBus Polling (every 1s)
@@ -59,8 +62,14 @@ void loop() {
             st.fanSpeed, st.cpuTemp, st.ambientTemp, st.currentApp);
     }
 
+    if (!eeSent && WiFiMgr::isConnected()) {
+    XboxEEPROM::broadcastOnce();   // reads once (if not cached) and sends
+    eeSent = true;
+    }
+
     // 3. UDP Packet Sending (as fast as udp_stat wants)
     if (WiFiMgr::isConnected()) {
         UDPStat::loop();
     }
+
 }

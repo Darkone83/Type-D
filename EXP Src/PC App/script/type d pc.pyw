@@ -1372,16 +1372,7 @@ class App(tk.Tk):
                 mac_txt    = fields.get("MAC") or ""
                 region_txt = fields.get("REG") or ""
                 hdd_hex    = fields.get("HDD") or ""
-                b64 = fields.get("RAW")
-                if b64:
-                    self._ee_raw_b64 = b64
-                if b64 and (not (serial_txt and mac_txt and region_txt and hdd_hex)):
-                    try:
-                        raw = base64.b64decode(b64)
-                        if len(raw) == 256:
-                            serial_txt, mac_txt, region_txt, hdd_hex = self._ee_from_raw(raw)
-                    except Exception:
-                        pass
+
             elif payload.startswith("RAW="):
                 b64 = payload[4:]
                 self._ee_raw_b64 = b64
