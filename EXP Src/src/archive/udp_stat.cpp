@@ -14,7 +14,7 @@ static const unsigned long idBroadcastInterval = 1000; // 1s interval for ID
 static WiFiUDP udp;
 
 static unsigned long lastCheck = 0; // For 5s polling
-static const unsigned long checkInterval = 5000; // 5 seconds
+static const unsigned long checkInterval = 1000; // 5 seconds
 
 // --- UDP blink state ---
 static bool udpBlinking = false;
