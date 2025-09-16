@@ -13,12 +13,12 @@ extern "C" {
 
 static const char* resourceFiles[] = {
     "amb.jpg", "app.jpg", "cpu.jpg", "DC.jpg",
-    "fan.jpg", "TD.jpg", "TR.jpg", "XBS.jpg"
+    "fan.jpg", "res.jpg", "TD.jpg", "TR.jpg", "XBS.jpg"
 };
 
 static const char* resourceNames[] = {
     "Ambient Temp icon", "App Icon", "CPU Icon", "Darkone Customs Logo",
-    "Fan Icon", "Type D Logo", "Team Resurgent Logo", "XBOX-Scene Logo"
+    "Fan Icon", "Resolution Icon", "Type D Logo", "Team Resurgent Logo", "XBOX-Scene Logo"
 };
 
 // --- Format FFat (Erase) ---
@@ -32,7 +32,7 @@ static void handleFormatFS(AsyncWebServerRequest *request) {
     request->send(200, "text/html", msg + "<br><a href='/diag'>Back to Diagnostics</a>");
 }
 
-// --- OTA Firmware Update Handler (classic robust version) ---
+// --- OTA Firmware Update Handler ---
 static void handleUpdate(AsyncWebServerRequest *request) {
     bool hasError = Update.hasError();
     String message = hasError ? "Update Failed!" : "Update Success! Rebooting...";
@@ -42,19 +42,22 @@ static void handleUpdate(AsyncWebServerRequest *request) {
     html += "</body></html>";
     request->send(200, "text/html", html);
     if (!hasError) {
-        delay(1200); // Give browser time to receive the HTTP reply
+        delay(1200);
         ESP.restart();
     }
 }
 
 static void handleUpdateUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
     if (!index) {
+        // Start update
         Serial.printf("[OTA] Start firmware upload: %s\n", filename.c_str());
         Update.begin(UPDATE_SIZE_UNKNOWN);
     }
     if (Update.write(data, len) != len) {
         Serial.printf("[OTA] Write failed!\n");
+        Update.abort();
     }
+    yeild();
     if (final) {
         if (Update.end(true)) {
             Serial.println("[OTA] Update finished. Rebooting...");
