@@ -159,19 +159,221 @@ static void getConexantResolutionFromRegs(int avVal, int& width, int& height) {
 }
 
 // ===================== Focus resolution ===========
+// Focus FS454: same logic as you have, plus detailed debug of register reads.
+// Enable with: #define SMBUS_EXT_DEBUG 1
 static void getFocusResolutionOrFallback(int avVal, int& width, int& height) {
   width = -1; height = -1;
 
-  uint16_t hact = 0, vact = 0;
-  if (readWordSTOP(ENC_FOCUS, 0xBA, hact) == 0) width  = (int)(hact & 0x0FFF);
-  if (readWordSTOP(ENC_FOCUS, 0xBE, vact) == 0) height = (int)(vact & 0x0FFF);
-  if (width  <= 0) { uint16_t np = 0; if (readWordSTOP(ENC_FOCUS, 0x71, np) == 0) width  = (int)(np & 0x07FF); }
-  if (height <= 0) { uint16_t nl = 0; if (readWordSTOP(ENC_FOCUS, 0x57, nl) == 0) height = (int)(nl & 0x07FF); }
+#if SMBUS_EXT_DEBUG
+  static uint32_t s_focus_next_dbg_ms = 0;
+  const uint32_t now_ms = millis();
+  const bool do_dbg = (now_ms >= s_focus_next_dbg_ms);
+  if (do_dbg) s_focus_next_dbg_ms = now_ms + 5000; // 5s throttle
+#endif
 
-  if (width <= 0 || height <= 0) {
-    const bool pal = isPalFromAvPack(avVal);
-    width = 720; height = pal ? 576 : 480;
+  auto in = [](int v, int lo, int hi){ return v >= lo && v <= hi; };
+  auto bswap = [](uint16_t x)->uint16_t { return (uint16_t)((x >> 8) | (x << 8)); };
+
+  // Local helper: repeated-start, LSB-first (spi2par2019 style) -- used ONLY for debug + optional read
+  auto readWordRS_LSB = [](uint8_t addr, uint8_t reg, uint16_t& out)->bool {
+    Wire.beginTransmission(addr);
+    Wire.write(reg);
+    if (Wire.endTransmission(false) != 0) return false; // repeated-start
+    uint8_t n = Wire.requestFrom((int)addr, 2, (int)true); // read 2, STOP
+    if (n != 2 || !Wire.available()) return false;
+    const uint8_t lo = Wire.read();
+    if (!Wire.available()) return false;
+    const uint8_t hi = Wire.read();
+    out = (uint16_t)lo | ((uint16_t)hi << 8); // LSB first
+    return true;
+  };
+
+  // -------------------- 1) FS454 PID and VID_CNTL0 --------------------
+  uint16_t pid_stop = 0, pid_rsl = 0;
+  bool pid_ok_stop = (readWordSTOP(ENC_FOCUS, 0x32, pid_stop) == 0);
+  bool pid_ok_rsl  = readWordRS_LSB(ENC_FOCUS, 0x32, pid_rsl);
+
+  uint16_t vc0_stop = 0, vc0_rsl = 0;
+  bool vc0_ok_stop = (readWordSTOP(ENC_FOCUS, 0x92, vc0_stop) == 0);
+  bool vc0_ok_rsl  = readWordRS_LSB(ENC_FOCUS, 0x92, vc0_rsl);
+
+#if SMBUS_EXT_DEBUG
+  if (do_dbg) {
+    Serial.printf("[FOCUS][DBG] PID stop=0x%04X swap=0x%04X rsl=0x%04X  (ok:%d/%d)\n",
+                  pid_stop, bswap(pid_stop), pid_rsl, (int)pid_ok_stop, (int)pid_ok_rsl);
+    Serial.printf("[FOCUS][DBG] VC0 stop=0x%04X swap=0x%04X rsl=0x%04X  (ok:%d/%d)\n",
+                  vc0_stop, bswap(vc0_stop), vc0_rsl, (int)vc0_ok_stop, (int)vc0_ok_rsl);
   }
+#endif
+
+  // Prefer the spi2par2019 interpretation when available
+  bool decided = false;
+  if (pid_ok_rsl && pid_rsl == 0xFE05 && vc0_ok_rsl) {
+    const bool HDTV       = (vc0_rsl & (1u << 12)) != 0;
+    const bool INTERLACED = (vc0_rsl & (1u << 7))  != 0;
+    if (HDTV) {
+      width  = INTERLACED ? 1920 : 1280;
+      height = INTERLACED ? 1080 : 720;
+#if SMBUS_EXT_DEBUG
+      if (do_dbg) Serial.printf("[FOCUS][DEC] via VC0.RSL HDTV=%d INT=%d => %dx%d\n",
+                                (int)HDTV, (int)INTERLACED, width, height);
+#endif
+      return;
+    } else {
+      width = 720; height = 480;
+#if SMBUS_EXT_DEBUG
+      if (do_dbg) Serial.printf("[FOCUS][DEC] via VC0.RSL SD => %dx%d\n", width, height);
+#endif
+      return;
+    }
+  }
+
+  // Fallback: try STOP+swap interpretation, just to see if that matches boards that wire MSB-first
+  if (pid_ok_stop && bswap(pid_stop) == 0xFE05 && vc0_ok_stop) {
+    const uint16_t VC0_SW = bswap(vc0_stop);
+    const bool HDTV       = (VC0_SW & (1u << 12)) != 0;
+    const bool INTERLACED = (VC0_SW & (1u << 7))  != 0;
+    if (HDTV) {
+      width  = INTERLACED ? 1920 : 1280;
+      height = INTERLACED ? 1080 : 720;
+#if SMBUS_EXT_DEBUG
+      if (do_dbg) Serial.printf("[FOCUS][DEC] via VC0.STOP+SWAP HDTV=%d INT=%d => %dx%d\n",
+                                (int)HDTV, (int)INTERLACED, width, height);
+#endif
+      return;
+    } else {
+      width = 720; height = 480;
+#if SMBUS_EXT_DEBUG
+      if (do_dbg) Serial.printf("[FOCUS][DEC] via VC0.STOP+SWAP SD => %dx%d\n", width, height);
+#endif
+      return;
+    }
+  }
+
+  // -------------------- 2) HDTV ACTIVE window (HACT_WD, VACT_HT) --------------------
+  uint16_t w_stop=0, h_stop=0, w_rsl=0, h_rsl=0;
+  bool w_ok_stop = (readWordSTOP(ENC_FOCUS, 0xBA, w_stop) == 0);
+  bool h_ok_stop = (readWordSTOP(ENC_FOCUS, 0xBE, h_stop) == 0);
+  bool w_ok_rsl  = readWordRS_LSB(ENC_FOCUS, 0xBA, w_rsl);
+  bool h_ok_rsl  = readWordRS_LSB(ENC_FOCUS, 0xBE, h_rsl);
+
+#if SMBUS_EXT_DEBUG
+  if (do_dbg) {
+    Serial.printf("[FOCUS][DBG] HACT_WD stop=0x%04X (%4u)  rsl=0x%04X (%4u)  ok:%d/%d\n",
+                  w_stop, (unsigned)(w_stop & 0x0FFF), w_rsl, (unsigned)(w_rsl & 0x0FFF),
+                  (int)w_ok_stop, (int)w_ok_rsl);
+    Serial.printf("[FOCUS][DBG] VACT_HT stop=0x%04X (%4u)  rsl=0x%04X (%4u)  ok:%d/%d\n",
+                  h_stop, (unsigned)(h_stop & 0x0FFF), h_rsl, (unsigned)(h_rsl & 0x0FFF),
+                  (int)h_ok_stop, (int)h_ok_rsl);
+  }
+#endif
+
+  // Prefer RS_LSB values when available
+  if (w_ok_rsl && h_ok_rsl) {
+    const int W = (int)(w_rsl & 0x0FFF);
+    const int H = (int)(h_rsl & 0x0FFF);
+    if (in(H, 680, 760))        { width=1280; height=720;  decided=true; }
+    else if (in(H, 1030,1120))  { width=1920; height=1080; decided=true; }
+    else if (in(H, 460, 510))   { width = (in(W,1180,1380)?1280:720); height = (in(W,1180,1380)?720:480); decided=true; }
+    else if (in(W,1180,1380) && in(H,620,820))   { width=1280; height=720;  decided=true; }
+    else if (in(W,1840,1980) && in(H,980,1140))  { width=1920; height=1080; decided=true; }
+    else if (in(W,690,780)   && in(H,430,530))   { width=720;  height=480;  decided=true; }
+
+#if SMBUS_EXT_DEBUG
+    if (do_dbg) {
+      Serial.printf("[FOCUS][DEC] via ACTIVE.RSL W=%d H=%d => %s\n",
+                    (int)(w_rsl & 0x0FFF), (int)(h_rsl & 0x0FFF),
+                    decided ? "DECIDED" : "UNDECIDED");
+    }
+#endif
+    if (decided) return;
+  }
+
+  // Try STOP words (use as-is and with swap) just to see if they look sane
+  if (w_ok_stop && h_ok_stop) {
+    const int W1 = (int)(w_stop & 0x0FFF), H1 = (int)(h_stop & 0x0FFF);
+    const int W2 = (int)(bswap(w_stop) & 0x0FFF), H2 = (int)(bswap(h_stop) & 0x0FFF);
+    // First try as-is
+    if (!decided) {
+      if (in(H1,680,760))        { width=1280; height=720;  decided=true; }
+      else if (in(H1,1030,1120)) { width=1920; height=1080; decided=true; }
+      else if (in(H1,460,510))   { width=(in(W1,1180,1380)?1280:720); height=(in(W1,1180,1380)?720:480); decided=true; }
+      else if (in(W1,1180,1380) && in(H1,620,820))  { width=1280;height=720;  decided=true; }
+      else if (in(W1,1840,1980) && in(H1,980,1140)) { width=1920;height=1080; decided=true; }
+      else if (in(W1,690,780)   && in(H1,430,530))  { width=720; height=480;  decided=true; }
+#if SMBUS_EXT_DEBUG
+      if (do_dbg) Serial.printf("[FOCUS][DEC] via ACTIVE.STOP (as-is) W=%d H=%d => %s\n",
+                                W1,H1, decided?"DECIDED":"UNDECIDED");
+#endif
+    }
+    // Then try swapped
+    if (!decided) {
+      if (in(H2,680,760))        { width=1280; height=720;  decided=true; }
+      else if (in(H2,1030,1120)) { width=1920; height=1080; decided=true; }
+      else if (in(H2,460,510))   { width=(in(W2,1180,1380)?1280:720); height=(in(W2,1180,1380)?720:480); decided=true; }
+      else if (in(W2,1180,1380) && in(H2,620,820))  { width=1280;height=720;  decided=true; }
+      else if (in(W2,1840,1980) && in(H2,980,1140)) { width=1920;height=1080; decided=true; }
+      else if (in(W2,690,780)   && in(H2,430,530))  { width=720; height=480;  decided=true; }
+#if SMBUS_EXT_DEBUG
+      if (do_dbg) Serial.printf("[FOCUS][DEC] via ACTIVE.STOP (swapped) W=%d H=%d => %s\n",
+                                W2,H2, decided?"DECIDED":"UNDECIDED");
+#endif
+    }
+    if (decided) return;
+  }
+
+  // -------------------- 3) SD counters (only if HD absent) --------------------
+  uint16_t nl_stop=0, np_stop=0, nl_rsl=0, np_rsl=0;
+  bool nl_ok_stop = (readWordSTOP(ENC_FOCUS, 0x57, nl_stop) == 0);
+  bool np_ok_stop = (readWordSTOP(ENC_FOCUS, 0x71, np_stop) == 0);
+  bool nl_ok_rsl  = readWordRS_LSB(ENC_FOCUS, 0x57, nl_rsl);
+  bool np_ok_rsl  = readWordRS_LSB(ENC_FOCUS, 0x71, np_rsl);
+
+#if SMBUS_EXT_DEBUG
+  if (do_dbg) {
+    Serial.printf("[FOCUS][DBG] NL stop=0x%04X(%4u) swap=%4u rsl=0x%04X(%4u) ok:%d/%d\n",
+                  nl_stop, (unsigned)(nl_stop & 0x07FF), (unsigned)(bswap(nl_stop) & 0x07FF),
+                  nl_rsl, (unsigned)(nl_rsl & 0x07FF), (int)nl_ok_stop, (int)nl_ok_rsl);
+    Serial.printf("[FOCUS][DBG] NP stop=0x%04X(%4u) swap=%4u rsl=0x%04X(%4u) ok:%d/%d\n",
+                  np_stop, (unsigned)(np_stop & 0x07FF), (unsigned)(bswap(np_stop) & 0x07FF),
+                  np_rsl, (unsigned)(np_rsl & 0x07FF), (int)np_ok_stop, (int)np_ok_rsl);
+  }
+#endif
+
+  // Use RS_LSB SD values first, else STOP as-is, else STOP swapped
+  if (nl_ok_rsl && np_ok_rsl) {
+    height = (int)(nl_rsl & 0x07FF);
+    width  = (int)(np_rsl & 0x07FF);
+#if SMBUS_EXT_DEBUG
+    if (do_dbg) Serial.printf("[FOCUS][DEC] via SD.RSL => %dx%d\n", width, height);
+#endif
+    return;
+  }
+  if (nl_ok_stop && np_ok_stop) {
+    height = (int)(nl_stop & 0x07FF);
+    width  = (int)(np_stop & 0x07FF);
+#if SMBUS_EXT_DEBUG
+    if (do_dbg) Serial.printf("[FOCUS][DEC] via SD.STOP(as-is) => %dx%d\n", width, height);
+#endif
+    return;
+  }
+  if (nl_ok_stop || np_ok_stop) { // mixed case
+    height = nl_ok_stop ? (int)(bswap(nl_stop) & 0x07FF) : -1;
+    width  = np_ok_stop ? (int)(bswap(np_stop) & 0x07FF) : -1;
+    if (width > 0 && height > 0) {
+#if SMBUS_EXT_DEBUG
+      if (do_dbg) Serial.printf("[FOCUS][DEC] via SD.STOP(swapped) => %dx%d\n", width, height);
+#endif
+      return;
+    }
+  }
+
+  // -------------------- 4) AV-pack guard --------------------
+  const bool pal = isPalFromAvPack(avVal);
+  width = 720; height = pal ? 576 : 480;
+#if SMBUS_EXT_DEBUG
+  if (do_dbg) Serial.printf("[FOCUS][DEC] via AV-PACK => %dx%d\n", width, height);
+#endif
 }
 
 // ===================== Xcalibur helpers ===========

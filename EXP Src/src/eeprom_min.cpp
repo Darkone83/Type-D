@@ -8,6 +8,11 @@
 #define EEPROM_UDP_PORT 50506
 #endif
 
+// Periodic rebroadcast cadence (can be overridden before including this file)
+#ifndef EEPROM_REBROADCAST_MS
+#define EEPROM_REBROADCAST_MS 10000UL
+#endif
+
 static WiFiUDP eeUdp;
 
 // ---- share the global SMBus lock (defined in xbox_smbus_poll.cpp) ----
@@ -184,65 +189,21 @@ namespace XboxEEPROM {
   static bool    s_have_hdd  = false;
   static char    s_hdd_hex[33] = {0};
 
-  // hard guard so broadcastOnce() can only ever run its read path once
-  static bool    s_once_done = false;
+  // Cached Base64 and timing for periodic rebroadcast
+  static String   s_raw_b64;            // Base64 of s_rom (prepared once)
+  static uint32_t s_last_bcast = 0;     // last broadcast timestamp
+  static bool     s_read_done  = false; // we performed the one-time read (never touch SMBus again)
 
-  // -------- one-shot broadcast ------------
-  void broadcastOnce() {
-    // Prevent any further attempts (even if the first one fails): no I2C after first call
-    if (s_once_done) return;
-    s_once_done = true;
-
+  // -------- internal helper: broadcast from cached data only ------------
+  static void send_broadcasts_from_cache() {
+    if (!s_have_rom) return;     // nothing to send yet
     ensureUdp();
 
-    // Snapshot the EEPROM only on the first successful run
-    if (!s_have_rom) {
-      if (readAll(s_rom) != 0) {
-        Serial.println("[EE] readAll FAILED");
-        eeUdp.beginPacket(IPAddress(255,255,255,255), EEPROM_UDP_PORT);
-        eeUdp.print("EE:ERR=READ_FAIL");
-        eeUdp.endPacket();
-        return;
-      }
-
-      // Decrypt HDD key once and cache result (CPU-only; no SMBus)
-      const uint8_t* chk = &s_rom[OFF_CHECKSUM];
-      const uint8_t* candidates[3] = { EEPROM_KEY_V10, EEPROM_KEY_V11_14, EEPROM_KEY_V16 };
-      const char*    cand_name [3] = { "v1.0", "v1.1-1.4", "v1.6/1.6b" };
-
-      for (int k = 0; k < 3 && !s_have_hdd; ++k) {
-        uint8_t rc4key[20];
-        if (!hmac_sha1(candidates[k], 16, chk, LEN_CHECKSUM, rc4key)) continue;
-
-        uint8_t fac[LEN_FACTORY];
-        memcpy(fac, &s_rom[OFF_FACTORY], LEN_FACTORY);
-        rc4_state st; rc4_init(&st, rc4key, sizeof(rc4key));
-
-        // try both lengths
-        for (int li = 0; li < 2 && !s_have_hdd; ++li) {
-          const int fac_len = kFactoryLens[li];
-          uint8_t tmp[LEN_FACTORY];
-          memcpy(tmp, fac, LEN_FACTORY);
-          rc4_state st2 = st;           // copy state for fresh decrypt per length
-          rc4_crypt(&st2, tmp, fac_len);
-
-          uint8_t tmpHmac[20];
-          if (!hmac_sha1(candidates[k], 16, tmp, fac_len, tmpHmac)) continue;
-          if (memcmp(tmpHmac, chk, LEN_CHECKSUM) != 0) continue;
-
-          toHexUpper(&tmp[8], 16, s_hdd_hex);
-          s_have_hdd = true;
-          // Serial.printf("[EE] HDD key decrypted OK using %s key (len=0x%02X): %s\n",
-          //               cand_name[k], fac_len, s_hdd_hex);
-        }
-      }
-
-      // if (!s_have_hdd) { Serial.println("[EE] HDD key decrypt/validate FAILED"); }
-
-      s_have_rom = true; // mark snapshot complete
+    // Prepare cached Base64 once
+    if (s_raw_b64.length() == 0) {
+      s_raw_b64 = base64::encode(s_rom, 256);
     }
 
-    // From here on, use the cached ROM/HDD; no more SMBus access
     const uint8_t* rom = s_rom;
 
     // Optional debug prints trimmed down
@@ -250,10 +211,9 @@ namespace XboxEEPROM {
     for (int i=0;i<12;i++) { Serial.printf("%02X ", rom[0x09+i]); } Serial.println();
 
     // RAW packet
-    String b64 = base64::encode(rom, 256);
     eeUdp.beginPacket(IPAddress(255,255,255,255), EEPROM_UDP_PORT);
     eeUdp.print("EE:RAW=");
-    eeUdp.print(b64);
+    eeUdp.print(s_raw_b64);
     eeUdp.endPacket();
 
     // HDD packet
@@ -268,7 +228,7 @@ namespace XboxEEPROM {
     // Duplicate RAW (preserved behavior)
     eeUdp.beginPacket(IPAddress(255,255,255,255), EEPROM_UDP_PORT);
     eeUdp.print("EE:RAW=");
-    eeUdp.print(b64);
+    eeUdp.print(s_raw_b64);
     eeUdp.endPacket();
 
     // Labeled packet (optional)
@@ -282,8 +242,80 @@ namespace XboxEEPROM {
       eeUdp.print("|MAC=");   eeUdp.print(macP);
       eeUdp.print("|REG=");   eeUdp.print(regP);
       eeUdp.print("|HDD=");   eeUdp.print(s_hdd_hex);
-      eeUdp.print("|RAW=");   eeUdp.print(b64);
+      eeUdp.print("|RAW=");   eeUdp.print(s_raw_b64);
       eeUdp.endPacket();
+    }
+  }
+
+  // -------- one-shot read + immediate broadcast (subsequent calls just rebroadcast) ------------
+  void broadcastOnce() {
+    ensureUdp();
+
+    // One-time SMBus read & decrypt/cache
+    if (!s_read_done) {
+      if (!s_have_rom) {
+        if (readAll(s_rom) != 0) {
+          Serial.println("[EE] readAll FAILED");
+          eeUdp.beginPacket(IPAddress(255,255,255,255), EEPROM_UDP_PORT);
+          eeUdp.print("EE:ERR=READ_FAIL");
+          eeUdp.endPacket();
+          s_read_done = true; // prevent retrying I2C forever
+          return;
+        }
+
+        // Decrypt HDD key once and cache result (CPU-only; no SMBus)
+        const uint8_t* chk = &s_rom[OFF_CHECKSUM];
+        const uint8_t* candidates[3] = { EEPROM_KEY_V10, EEPROM_KEY_V11_14, EEPROM_KEY_V16 };
+        // const char*    cand_name [3] = { "v1.0", "v1.1-1.4", "v1.6/1.6b" };
+
+        for (int k = 0; k < 3 && !s_have_hdd; ++k) {
+          uint8_t rc4key[20];
+          if (!hmac_sha1(candidates[k], 16, chk, LEN_CHECKSUM, rc4key)) continue;
+
+          uint8_t fac[LEN_FACTORY];
+          memcpy(fac, &s_rom[OFF_FACTORY], LEN_FACTORY);
+          rc4_state st; rc4_init(&st, rc4key, sizeof(rc4key));
+
+          // try both lengths
+          for (int li = 0; li < 2 && !s_have_hdd; ++li) {
+            const int fac_len = kFactoryLens[li];
+            uint8_t tmp[LEN_FACTORY];
+            memcpy(tmp, fac, LEN_FACTORY);
+            rc4_state st2 = st;           // copy state for fresh decrypt per length
+            rc4_crypt(&st2, tmp, fac_len);
+
+            uint8_t tmpHmac[20];
+            if (!hmac_sha1(candidates[k], 16, tmp, fac_len, tmpHmac)) continue;
+            if (memcmp(tmpHmac, chk, LEN_CHECKSUM) != 0) continue;
+
+            toHexUpper(&tmp[8], 16, s_hdd_hex);
+            s_have_hdd = true;
+          }
+        }
+
+        s_have_rom = true; // mark snapshot complete
+      }
+
+      // Prepare cached Base64 once (optional; helper also ensures it)
+      if (s_raw_b64.length() == 0) {
+        s_raw_b64 = base64::encode(s_rom, 256);
+      }
+
+      s_read_done = true;  // never touch SMBus again
+    }
+
+    // Immediate broadcast using cached data
+    send_broadcasts_from_cache();
+    s_last_bcast = millis();
+  }
+
+  // -------- periodic rebroadcast (call from loop()) ------------
+  void tick() {
+    if (!s_have_rom) return;  // nothing cached yet (read failed or not run)
+    const uint32_t now = millis();
+    if (now - s_last_bcast >= EEPROM_REBROADCAST_MS) {
+      send_broadcasts_from_cache();
+      s_last_bcast = now;
     }
   }
 

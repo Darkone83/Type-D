@@ -39,7 +39,7 @@ void Cache_Manager::setCurrentApp(const char *name) {
     if (name && *name) {
         strncpy(cache.currentApp, name, sizeof(cache.currentApp) - 1);
         cache.currentApp[sizeof(cache.currentApp) - 1] = 0;
-        Serial.printf("[CacheMgr] App name updated: %s\n", cache.currentApp);
+        //Serial.printf("[CacheMgr] App name updated: %s\n", cache.currentApp);
     }
 }
 
@@ -98,7 +98,7 @@ void Cache_Manager::pollTitleUdp() {
         parse_app_payload(buf, name);
         if (name[0]) {
             setCurrentApp(name);
-            Serial.printf("[CacheMgr] Title via UDP: %s\n", name);
+        //    Serial.printf("[CacheMgr] Title via UDP: %s\n", name);
         }
     }
 }

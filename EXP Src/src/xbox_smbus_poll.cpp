@@ -37,7 +37,7 @@
 #define SMBUS_STARTUP_GRACE_MS    10000   // let the console boot first
 #endif
 #ifndef SMBUS_MIN_TICK_MS
-#define SMBUS_MIN_TICK_MS          500   // one RR step every 1s (~4s full cycle)
+#define SMBUS_MIN_TICK_MS          250   // one RR step every 1s (~4s full cycle)
 #endif
 #ifndef SMBUS_BACKOFF_MS_BASE
 #define SMBUS_BACKOFF_MS_BASE      8000   // backoff base on error; exponential

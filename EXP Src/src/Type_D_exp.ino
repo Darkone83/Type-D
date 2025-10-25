@@ -43,8 +43,8 @@ void setup() {
   LedStat::begin();
   LedStat::setStatus(LedStatus::Booting);
 
-  //Serial.begin(115200);
-  //delay(150); // let USB CDC settle a bit
+  Serial.begin(115200);
+  delay(150); // let USB CDC settle a bit
 
   WiFiMgr::begin();
   Cache_Manager::begin();
@@ -83,6 +83,7 @@ void loop() {
   // Let it run independently; it does its own startup grace & pacing and uses the lock.
   SMBusExt::loop();
 
+
   // ===== One-shot EEPROM broadcast =====
   // - after startup grace
   // - after WiFi connected
@@ -95,6 +96,8 @@ void loop() {
   // ===== UDP stats / ID beacons (no SMBus access here) =====
   if (WiFiMgr::isConnected()) {
     UDPStat::loop();
+    XboxEEPROM::tick();
+  
   }
 
   // ===== Modest status print every 5s =====
