@@ -669,8 +669,12 @@ class MainWindow(QMainWindow):
         foot.addSpacing(12)
         self.lbl_tb = QLabel("Window:"); self._style_value(self.lbl_tb); foot.addWidget(self.lbl_tb)
         self.combo_timebase = QComboBox(); self.combo_timebase.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-        self.combo_timebase.addItems(["1 min","5 min","10 min","15 min"])
-        self.combo_timebase.setCurrentText("10 min")
+        # Add labels with numeric minutes as item data to avoid parsing errors (e.g., "15 min" matching "1")
+        for label, mins in [("1 min", 1), ("5 min", 5), ("10 min", 10), ("15 min", 15)]:
+            self.combo_timebase.addItem(label, mins)
+        idx_default = self.combo_timebase.findText("10 min")
+        if idx_default >= 0:
+            self.combo_timebase.setCurrentIndex(idx_default)
         self.combo_timebase.currentIndexChanged.connect(self._timebase_changed)
         foot.addWidget(self.combo_timebase)
         # hidden by default; appears when graph mode is enabled
@@ -743,12 +747,14 @@ class MainWindow(QMainWindow):
 
     # ---------- Graph time-base ----------
     def _timebase_changed(self, _index:int):
-        text = self.combo_timebase.currentText()
-        mins = 10
-        if text.startswith("1"): mins = 1
-        elif text.startswith("5"): mins = 5
-        elif text.startswith("10"): mins = 10
-        elif text.startswith("15"): mins = 15
+        # Prefer the numeric item data; fall back to parsing the leading integer from the label
+        mins = self.combo_timebase.currentData()
+        if mins is None:
+            text = self.combo_timebase.currentText()
+            try:
+                mins = int("".join(ch for ch in text if ch.isdigit()))
+            except Exception:
+                mins = 10  # sane default
         self.hist_window_sec = float(mins) * 60.0
         # Trim immediately and refresh
         for hist in (self.hist_fan, self.hist_cpuC, self.hist_ambC):
