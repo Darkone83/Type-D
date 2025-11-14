@@ -8,6 +8,8 @@
   <img src="https://github.com/Darkone83/Type-D/blob/main/images/Duke1.jpg"><img src="https://github.com/Darkone83/Type-D/blob/main/images/Duke2.jpg">  
 </div>
 
+<a href="https://discord.gg/k2BQhSJ"><img src="https://github.com/Darkone83/ModXo-Basic/blob/main/Images/discord.svg"></a>
+
 **Type D** is a two-part open-source system for the original Xbox, bringing a modern, customizable, and fully themed display experience to your console. It replaces the stock jewel with a 240x240 TFT touch display, controlled by an ESP32-S3, and optionally pairs with the Type D Expansion module for live Xbox status telemetry.
 
 ---
