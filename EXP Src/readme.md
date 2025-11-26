@@ -44,6 +44,12 @@ Mount to the RF shield with VHB tape or foam tape
 
 Locate and join the Type D EXP Setup network, and join your preferred wifi network. Both Type D and Type D EXP need to be on the same network to work properly.
 
+## 📱 Get the App
+
+[![Download on the App Store](https://github.com/Darkone83/Type-D/blob/main/images/download.svg)](https://apps.apple.com/us/app/type-d-viewer/id6755620952)
+
+Download the **Type D Viewer** app for iOS to view live telemetry data from your XBOX.
+
 ## LED Statuses
 
 - White: Booting
@@ -51,4 +57,6 @@ Locate and join the Type D EXP Setup network, and join your preferred wifi netwo
 - Green: connected to WiFi
 - Red: Wifi connection failed
 - Orange blink: UPD Packet send *now working* will show the status approx every 5 seconds
+
+
 
